@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle del Proyecto</title>
+    <link rel="stylesheet" href="../css/reset.css">
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        .detail-container {
+            max-width: 900px;
+            margin: var(--spacing-lg) auto;
+            padding: 0 var(--spacing-md);
+        }
+
+        .detail-header {
+            background: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .detail-header h1 {
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .project-id {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .detail-section {
+            background: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .detail-section h2 {
+            color: var(--primary-color);
+            font-size: 1.3rem;
+            margin-bottom: var(--spacing-md);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: var(--spacing-xs);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .detail-item {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .detail-item label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        .detail-item .value {
+            color: var(--text-primary);
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .back-button {
+            margin-bottom: var(--spacing-md);
+        }
+
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">🚀 Gestión de Proyectos</h1>
+            <ul class="navbar-menu">
+                <li><a href="../index.html">Inicio</a></li>
+                <li><a href="listar-proyectos.html">Proyectos</a></li>
+                <li><a href="crear-proyecto.html">Crear Proyecto</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="detail-container">
+        <div class="back-button">
+            <a href="listar-proyectos.html" class="btn btn-secondary">← Volver al Listado</a>
+        </div>
+
+        <div id="projectDetail"></div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        function obtenerParametroURL(nombre) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(nombre);
+        }
+
+        function obtenerNombreEstado(estadoId) {
+            const estados = {
+                '0': 'EN ESTUDIO',
+                '2': 'FORMULADO',
+                '4': 'PRE-APROBADO',
+                '6': 'APROBADO COMITÉ CENTRAL',
+                '8': 'SUSCRITO',
+                '12': 'SIN INICIAR',
+                '14': 'EN EJECUCIÓN'
+            };
+            return estados[estadoId] || 'DESCONOCIDO';
+        }
+
+        function cargarDetalle() {
+            const proyectoId = obtenerParametroURL('id');
+            
+            if (!proyectoId) {
+                document.getElementById('projectDetail').innerHTML = `
+                    <div class="detail-header">
+                        <h2>❌ Proyecto no encontrado</h2>
+                        <p>No se especificó un ID de proyecto válido.</p>
+                        <a href="listar-proyectos.html" class="btn btn-primary">Volver al Listado</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const proyecto = obtenerProyectoPorId(proyectoId);
+
+            if (!proyecto) {
+                document.getElementById('projectDetail').innerHTML = `
+                    <div class="detail-header">
+                        <h2>❌ Proyecto no encontrado</h2>
+                        <p>No se encontró el proyecto con ID #${proyectoId}.</p>
+                        <a href="listar-proyectos.html" class="btn btn-primary">Volver al Listado</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // Renderizar detalle
+            document.getElementById('projectDetail').innerHTML = `
+                <div class="detail-header">
+                    <div class="project-id">Proyecto #${proyecto.proyecto_id}</div>
+                    <h1>${proyecto.nombre_proyecto}</h1>
+                </div>
+
+                <!-- INFORMACIÓN GENERAL -->
+                <div class="detail-section">
+                    <h2>📋 Información General</h2>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Año del Proyecto</label>
+                            <div class="value">${proyecto.anio_proyecto}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Número Proyecto Externo</label>
+                            <div class="value">${proyecto.numero_proyecto_externo || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item full-width">
+                            <label>Objeto del Proyecto</label>
+                            <div class="value">${proyecto.objeto_proyecto}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Estado</label>
+                            <div class="value">${obtenerNombreEstado(proyecto.estado_proyecto_id)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Activo</label>
+                            <div class="value">${proyecto.es_activo ? '✅ Sí' : '❌ No'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INFORMACIÓN ECONÓMICA -->
+                <div class="detail-section">
+                    <h2>💰 Información Económica</h2>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Valor del Proyecto</label>
+                            <div class="value">${formatearMoneda(proyecto.valor_proyecto)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Aporte Entidad</label>
+                            <div class="value">${formatearMoneda(proyecto.aporte_entidad || 0)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Aporte Universidad</label>
+                            <div class="value">${formatearMoneda(proyecto.aporte_universidad || 0)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Cantidad de Beneficiarios</label>
+                            <div class="value">${proyecto.cantidad_beneficiarios || 'No especificado'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FECHAS -->
+                <div class="detail-section">
+                    <h2>📅 Fechas</h2>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Fecha de Suscripción</label>
+                            <div class="value">${formatearFecha(proyecto.fecha_suscripcion)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Fecha de Inicio</label>
+                            <div class="value">${formatearFecha(proyecto.fecha_inicio)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Fecha de Finalización</label>
+                            <div class="value">${formatearFecha(proyecto.fecha_finalizacion)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Fecha de Creación</label>
+                            <div class="value">${formatearFecha(proyecto.fecha_creacion)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INFORMACIÓN ADICIONAL -->
+                <div class="detail-section">
+                    <h2>📄 Información Adicional</h2>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Correo Principal</label>
+                            <div class="value">${proyecto.correo_principal || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Acto Administrativo</label>
+                            <div class="value">${proyecto.acto_administrativo || 'N/A'}</div>
+                        </div>
+                        ${proyecto.enlace_secop ? `
+                        <div class="detail-item full-width">
+                            <label>Enlace SECOP</label>
+                            <div class="value"><a href="${proyecto.enlace_secop}" target="_blank" style="color: var(--primary-color);">${proyecto.enlace_secop}</a></div>
+                        </div>
+                        ` : ''}
+                        ${proyecto.observaciones ? `
+                        <div class="detail-item full-width">
+                            <label>Observaciones</label>
+                            <div class="value">${proyecto.observaciones}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        cargarDetalle();
+    </script>
+</body>
+</html>

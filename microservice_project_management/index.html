@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Proyectos - PMO</title>
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">🚀 Gestión de Proyectos</h1>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="active">Inicio</a></li>
+                <li><a href="pages/listar-proyectos.html">Proyectos</a></li>
+                <li><a href="pages/crear-proyecto.html">Crear Proyecto</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="container">
+            <h1>Sistema de Gestión de Proyectos</h1>
+            <p>Administra proyectos de extensión universitaria</p>
+            <div class="hero-actions">
+                <a href="pages/crear-proyecto.html" class="btn btn-primary">➕ Crear Proyecto</a>
+                <a href="pages/listar-proyectos.html" class="btn btn-secondary">📋 Ver Proyectos</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ESTADÍSTICAS -->
+    <section class="stats">
+        <div class="container">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <h3 id="totalProyectos">0</h3>
+                <p>Total Proyectos</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <h3 id="proyectosActivos">0</h3>
+                <p>Activos</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <h3 id="valorTotal">$0</h3>
+                <p>Valor Total</p>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // Cargar estadísticas
+        function cargarEstadisticas() {
+            const proyectos = obtenerProyectos();
+            document.getElementById('totalProyectos').textContent = proyectos.length;
+            
+            const activos = proyectos.filter(p => p.es_activo).length;
+            document.getElementById('proyectosActivos').textContent = activos;
+            
+            const total = proyectos.reduce((sum, p) => sum + parseFloat(p.valor_proyecto || 0), 0);
+            document.getElementById('valorTotal').textContent = formatearMoneda(total);
+        }
+
+        cargarEstadisticas();
+    </script>
+</body>
+</html>

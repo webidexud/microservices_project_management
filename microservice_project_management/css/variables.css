@@ -1,0 +1,42 @@
+/* Variables CSS */
+:root {
+    /* Colores principales */
+    --primary-color: #667eea;
+    --primary-dark: #5568d3;
+    --secondary-color: #764ba2;
+    
+    /* Colores de estado */
+    --success-color: #27ae60;
+    --error-color: #e74c3c;
+    --warning-color: #f39c12;
+    --info-color: #3498db;
+    
+    /* Colores de texto */
+    --text-primary: #333;
+    --text-secondary: #666;
+    --text-light: #999;
+    
+    /* Colores de fondo */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-dark: #2c3e50;
+    
+    /* Bordes */
+    --border-color: #e0e0e0;
+    --border-radius: 8px;
+    
+    /* Sombras */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.1);
+    
+    /* Espaciado */
+    --spacing-xs: 8px;
+    --spacing-sm: 16px;
+    --spacing-md: 24px;
+    --spacing-lg: 32px;
+    --spacing-xl: 48px;
+    
+    /* Ancho máximo */
+    --max-width: 1200px;
+}

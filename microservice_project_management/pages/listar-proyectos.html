@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listado de Proyectos</title>
+    <link rel="stylesheet" href="../css/reset.css">
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        .table-container {
+            max-width: var(--max-width);
+            margin: var(--spacing-lg) auto;
+            padding: 0 var(--spacing-md);
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .table-header h1 {
+            font-size: 2rem;
+            color: var(--text-primary);
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        th {
+            padding: var(--spacing-sm);
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tbody tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        @media (max-width: 768px) {
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: var(--spacing-xs);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">🚀 Gestión de Proyectos</h1>
+            <ul class="navbar-menu">
+                <li><a href="../index.html">Inicio</a></li>
+                <li><a href="listar-proyectos.html" class="active">Proyectos</a></li>
+                <li><a href="crear-proyecto.html">Crear Proyecto</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="table-container">
+        <div class="table-header">
+            <h1>📋 Listado de Proyectos</h1>
+            <a href="crear-proyecto.html" class="btn btn-primary">➕ Crear Proyecto</a>
+        </div>
+
+        <div id="tableContent"></div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        function obtenerNombreEstado(estadoId) {
+            const estados = {
+                '0': { nombre: 'EN ESTUDIO', clase: 'info' },
+                '2': { nombre: 'FORMULADO', clase: 'info' },
+                '4': { nombre: 'PRE-APROBADO', clase: 'warning' },
+                '6': { nombre: 'APROBADO', clase: 'success' },
+                '8': { nombre: 'SUSCRITO', clase: 'success' },
+                '12': { nombre: 'SIN INICIAR', clase: 'warning' },
+                '14': { nombre: 'EN EJECUCIÓN', clase: 'success' }
+            };
+            return estados[estadoId] || { nombre: 'DESCONOCIDO', clase: 'info' };
+        }
+
+        function cargarProyectos() {
+            const proyectos = obtenerProyectos();
+            const contentDiv = document.getElementById('tableContent');
+
+            if (proyectos.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h2>No hay proyectos registrados</h2>
+                        <p>Comience creando su primer proyecto</p>
+                        <a href="crear-proyecto.html" class="btn btn-primary">Crear Primer Proyecto</a>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Año</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Valor</th>
+                            <th>Fecha Inicio</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            proyectos.forEach(proyecto => {
+                const estado = obtenerNombreEstado(proyecto.estado_proyecto_id);
+                html += `
+                    <tr>
+                        <td><strong>#${proyecto.proyecto_id}</strong></td>
+                        <td>${proyecto.anio_proyecto}</td>
+                        <td>${proyecto.nombre_proyecto}</td>
+                        <td><span class="badge badge-${estado.clase}">${estado.nombre}</span></td>
+                        <td>${formatearMoneda(proyecto.valor_proyecto)}</td>
+                        <td>${formatearFecha(proyecto.fecha_inicio)}</td>
+                        <td>
+                            <a href="detalle-proyecto.html?id=${proyecto.proyecto_id}" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.9rem;">Ver</a>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            contentDiv.innerHTML = html;
+        }
+
+        cargarProyectos();
+    </script>
+</body>
+</html>
