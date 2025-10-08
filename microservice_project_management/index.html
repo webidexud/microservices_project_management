@@ -3,57 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Proyectos - PMO</title>
+    <title>Gestión de Proyectos - Dashboard</title>
     <link rel="stylesheet" href="css/reset.css">
     <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="container">
-            <h1 class="navbar-brand">🚀 Gestión de Proyectos</h1>
-            <ul class="navbar-menu">
-                <li><a href="index.html" class="active">Inicio</a></li>
-                <li><a href="pages/listar-proyectos.html">Proyectos</a></li>
-                <li><a href="pages/crear-proyecto.html">Crear Proyecto</a></li>
-            </ul>
-        </div>
-    </nav>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">✓</div>
+                <div class="sidebar-brand-text">PMO System</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-menu-item active">
+                        <span class="sidebar-menu-icon">🏠</span>
+                        <span class="sidebar-menu-text">Inicio</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📊</span>
+                        <span class="sidebar-menu-text">Dashboard</span>
+                    </div>
+                </div>
 
-    <!-- HERO -->
-    <section class="hero">
-        <div class="container">
-            <h1>Sistema de Gestión de Proyectos</h1>
-            <p>Administra proyectos de extensión universitaria</p>
-            <div class="hero-actions">
-                <a href="pages/crear-proyecto.html" class="btn btn-primary">➕ Crear Proyecto</a>
-                <a href="pages/listar-proyectos.html" class="btn btn-secondary">📋 Ver Proyectos</a>
-            </div>
-        </div>
-    </section>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Gestión</div>
+                    <div class="sidebar-menu-item" onclick="window.location.href='pages/listar-proyectos.html'">
+                        <span class="sidebar-menu-icon">📁</span>
+                        <span class="sidebar-menu-text">Proyectos</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📝</span>
+                        <span class="sidebar-menu-text">Contratos</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">👥</span>
+                        <span class="sidebar-menu-text">Contratistas</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📄</span>
+                        <span class="sidebar-menu-text">Documentos</span>
+                    </div>
+                </div>
 
-    <!-- ESTADÍSTICAS -->
-    <section class="stats">
-        <div class="container">
-            <div class="stat-card">
-                <div class="stat-icon">📊</div>
-                <h3 id="totalProyectos">0</h3>
-                <p>Total Proyectos</p>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">✅</div>
-                <h3 id="proyectosActivos">0</h3>
-                <p>Activos</p>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">💰</div>
-                <h3 id="valorTotal">$0</h3>
-                <p>Valor Total</p>
-            </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Reportes</div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📈</span>
+                        <span class="sidebar-menu-text">Financiero</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">⏱️</span>
+                        <span class="sidebar-menu-text">Seguimiento</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Sistema</div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">⚙️</span>
+                        <span class="sidebar-menu-text">Configuración</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">👤</span>
+                        <span class="sidebar-menu-text">Usuarios</span>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- HEADER -->
+            <header class="app-header">
+                <div class="header-left">
+                    <h1 class="header-title">Inicio</h1>
+                    <div class="header-tabs">
+                        <a href="#" class="header-tab active">Resumen</a>
+                        <a href="#" class="header-tab">Finanzas</a>
+                        <a href="#" class="header-tab">Actividad</a>
+                    </div>
+                </div>
+                
+                <div class="header-right">
+                    <button class="header-icon-btn">🔍</button>
+                    <button class="header-icon-btn">🔔</button>
+                    <button class="header-icon-btn">💬</button>
+                    <div class="header-user">
+                        <div class="header-user-avatar">U</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <main class="page-content">
+                <!-- STATS -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon primary">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Proyectos</div>
+                            <div class="stat-value" id="totalProyectos">0</div>
+                            <div class="stat-change positive">↑ 12% este mes</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon success">✓</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Activos</div>
+                            <div class="stat-value" id="proyectosActivos">0</div>
+                            <div class="stat-change positive">↑ 8% este mes</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon warning">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Valor Total</div>
+                            <div class="stat-value" id="valorTotal">$0</div>
+                            <div class="stat-change positive">↑ 15% este mes</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon primary">📅</div>
+                        <div class="stat-content">
+                            <div class="stat-label">En Ejecución</div>
+                            <div class="stat-value" id="proyectosEjecucion">0</div>
+                            <div class="stat-change">Sin cambios</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACTIONS BAR -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="font-size: 1.25rem; font-weight: 600;">Proyectos Recientes</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm">
+                            📊 Exportar
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="window.location.href='pages/crear-proyecto.html'">
+                            ➕ Nuevo Proyecto
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TABLA DE PROYECTOS -->
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Proyecto</th>
+                                <th>Estado</th>
+                                <th>Valor</th>
+                                <th>Inicio</th>
+                                <th>Progreso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectsTableBody">
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <div class="empty-state-icon">📭</div>
+                                        <div class="empty-state-title">No hay proyectos</div>
+                                        <div class="empty-state-description">
+                                            Comience creando su primer proyecto
+                                        </div>
+                                        <button class="btn btn-primary" onclick="window.location.href='pages/crear-proyecto.html'">
+                                            Crear Proyecto
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </main>
         </div>
-    </section>
+    </div>
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
@@ -61,16 +195,99 @@
         // Cargar estadísticas
         function cargarEstadisticas() {
             const proyectos = obtenerProyectos();
+            
             document.getElementById('totalProyectos').textContent = proyectos.length;
             
             const activos = proyectos.filter(p => p.es_activo).length;
             document.getElementById('proyectosActivos').textContent = activos;
             
+            const enEjecucion = proyectos.filter(p => p.estado_proyecto_id === '14').length;
+            document.getElementById('proyectosEjecucion').textContent = enEjecucion;
+            
             const total = proyectos.reduce((sum, p) => sum + parseFloat(p.valor_proyecto || 0), 0);
             document.getElementById('valorTotal').textContent = formatearMoneda(total);
         }
 
+        // Obtener nombre del estado
+        function obtenerNombreEstado(estadoId) {
+            const estados = {
+                '0': { nombre: 'EN ESTUDIO', clase: 'gray' },
+                '2': { nombre: 'FORMULADO', clase: 'primary' },
+                '4': { nombre: 'PRE-APROBADO', clase: 'warning' },
+                '6': { nombre: 'APROBADO', clase: 'success' },
+                '8': { nombre: 'SUSCRITO', clase: 'success' },
+                '12': { nombre: 'SIN INICIAR', clase: 'warning' },
+                '14': { nombre: 'EN EJECUCIÓN', clase: 'primary' }
+            };
+            return estados[estadoId] || { nombre: 'DESCONOCIDO', clase: 'gray' };
+        }
+
+        // Cargar tabla de proyectos
+        function cargarTablaProyectos() {
+            const proyectos = obtenerProyectos();
+            const tbody = document.getElementById('projectsTableBody');
+            
+            if (proyectos.length === 0) {
+                return; // Mantener empty state
+            }
+            
+            // Mostrar solo los últimos 5
+            const proyectosRecientes = proyectos.slice(-5).reverse();
+            
+            tbody.innerHTML = proyectosRecientes.map(proyecto => {
+                const estado = obtenerNombreEstado(proyecto.estado_proyecto_id);
+                const fechaInicio = new Date(proyecto.fecha_inicio);
+                const fechaFin = new Date(proyecto.fecha_finalizacion);
+                const hoy = new Date();
+                
+                // Calcular progreso simple
+                const total = fechaFin - fechaInicio;
+                const transcurrido = hoy - fechaInicio;
+                const progreso = Math.max(0, Math.min(100, Math.round((transcurrido / total) * 100)));
+                
+                return `
+                    <tr>
+                        <td><strong>#${proyecto.proyecto_id}</strong></td>
+                        <td>
+                            <div style="font-weight: 500;">${proyecto.nombre_proyecto}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-tertiary);">
+                                ${proyecto.anio_proyecto}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge badge-${estado.clase}">${estado.nombre}</span>
+                        </td>
+                        <td style="font-weight: 500;">${formatearMoneda(proyecto.valor_proyecto)}</td>
+                        <td>${formatearFecha(proyecto.fecha_inicio)}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="flex: 1; height: 6px; background: var(--bg-tertiary); border-radius: 999px; overflow: hidden;">
+                                    <div style="height: 100%; width: ${progreso}%; background: var(--primary-color); transition: width 0.3s;"></div>
+                                </div>
+                                <span style="font-size: 0.75rem; color: var(--text-secondary); min-width: 35px;">${progreso}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn btn-ghost btn-sm" onclick="window.location.href='pages/detalle-proyecto.html?id=${proyecto.proyecto_id}'">
+                                Ver →
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Inicializar
         cargarEstadisticas();
+        cargarTablaProyectos();
+
+        // Navegación del sidebar
+        document.querySelectorAll('.sidebar-menu-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.sidebar-menu-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
     </script>
 </body>
 </html>
