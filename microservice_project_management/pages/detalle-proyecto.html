@@ -766,12 +766,16 @@
         <!-- BOTONES DE ACCIÓN -->
         <div class="action-buttons">
             <a href="listar-proyectos.html" class="btn btn-secondary">← Volver al Listado</a>
-            <button class="btn btn-primary" onclick="alert('Funcionalidad en desarrollo')">✏️ Editar Proyecto</button>
+            <a href="modificaciones-proyecto.html?id=${proyecto.proyecto_id}" class="btn btn-primary" id="btnModificaciones">
+                📊 Ver Modificaciones
+            </a>
         </div>
     </div>
 
     <script src="../js/config.js"></script>
     <script src="../js/utils.js"></script>
+    <script src="../js/proyectos.js"></script>
+    <script src="../js/modificaciones.js"></script>
     <script>
         const tiposProyecto = {
             '1': 'Consultoría',
@@ -943,15 +947,27 @@
                 return;
             }
 
-            // Calcular progreso y duración
-            const progreso = calcularProgreso(proyecto.fecha_inicio, proyecto.fecha_finalizacion);
-            const duracion = calcularDuracion(proyecto.fecha_inicio, proyecto.fecha_finalizacion);
+            // Calcular valores con modificaciones
+            const totalesConMods = calcularTotalesConModificaciones(
+                parseInt(proyectoId),
+                proyecto.valor_proyecto,
+                proyecto.fecha_finalizacion
+            );
+
+            // Calcular progreso y duración con las fechas actualizadas
+            const progreso = calcularProgreso(proyecto.fecha_inicio, totalesConMods.fechaFinActual);
+            const duracion = calcularDuracion(proyecto.fecha_inicio, totalesConMods.fechaFinActual);
             const estado = obtenerNombreEstado(proyecto.estado_proyecto_id);
 
-            // Renderizar header
+            // Renderizar header con indicador de modificaciones
             document.getElementById('projectHeader').innerHTML = `
                 <div class="project-header">
                     <div class="project-id">Proyecto #${proyecto.proyecto_id}</div>
+                    ${totalesConMods.numeroModificaciones > 0 ? `
+                        <span style="display: inline-block; background: #fff3cd; color: #856404; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-left: 8px;">
+                            📊 ${totalesConMods.numeroModificaciones} Modificación${totalesConMods.numeroModificaciones > 1 ? 'es' : ''}
+                        </span>
+                    ` : ''}
                     <h1 class="project-title">${proyecto.nombre_proyecto}</h1>
                     
                     <div class="project-meta-grid">
@@ -988,7 +1004,7 @@
                             <div class="meta-icon">💰</div>
                             <div class="meta-content">
                                 <div class="meta-label">Valor Total</div>
-                                <div class="meta-value">${formatearMoneda(proyecto.valor_proyecto)}</div>
+                                <div class="meta-value">${formatearMoneda(totalesConMods.valorTotal)}</div>
                             </div>
                         </div>
                     </div>
@@ -1002,8 +1018,8 @@
             document.getElementById('entidad').textContent = entidades[proyecto.entidad_id] || 'Entidad #' + proyecto.entidad_id;
             document.getElementById('dependencia').textContent = dependencias[proyecto.dependencia_ejecutora_id] || 'Dependencia #' + proyecto.dependencia_ejecutora_id;
 
-            // Información Económica
-            const valorProyecto = parseFloat(proyecto.valor_proyecto) || 0;
+            // Información Económica (usando valores con modificaciones)
+            const valorProyecto = totalesConMods.valorTotal;
             const beneficio = parseFloat(proyecto.valor_beneficio_institucional) || 0;
             const aporteUniversidad = parseFloat(proyecto.aporte_universidad) || 0;
             const aporteEntidad = parseFloat(proyecto.aporte_entidad) || 0;
@@ -1040,10 +1056,10 @@
             document.getElementById('modalidad_ejecucion').textContent = modalidadesEjecucion[proyecto.modalidad_ejecucion_id] || '-';
             document.getElementById('modalidad_contratacion').textContent = modalidadesContratacion[proyecto.modalidad_contratacion_id] || 'No especificado';
 
-            // Cronograma
+            // Cronograma (usando fechas con modificaciones)
             document.getElementById('fecha_suscripcion').textContent = formatearFecha(proyecto.fecha_suscripcion);
             document.getElementById('fecha_inicio').textContent = formatearFecha(proyecto.fecha_inicio);
-            document.getElementById('fecha_finalizacion').textContent = formatearFecha(proyecto.fecha_finalizacion);
+            document.getElementById('fecha_finalizacion').textContent = formatearFecha(totalesConMods.fechaFinActual);
             document.getElementById('duracion').textContent = duracion;
 
             // Progreso
@@ -1061,8 +1077,15 @@
                 document.getElementById('secop_row').style.display = 'block';
                 document.getElementById('enlace_secop').href = proyecto.enlace_secop;
             }
+
+            // Configurar botón de modificaciones
+            const btnModificaciones = document.getElementById('btnModificaciones');
+            if (btnModificaciones) {
+                btnModificaciones.href = `modificaciones-proyecto.html?id=${proyecto.proyecto_id}`;
+            }
         }
 
+        // Inicializar cuando el DOM esté listo
         cargarDetalle();
     </script>
 </body>

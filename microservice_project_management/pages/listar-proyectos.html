@@ -305,6 +305,14 @@
             return estados[estadoId] || { nombre: 'DESCONOCIDO', clase: 'gray' };
         }
 
+        // Obtener número de modificaciones de un proyecto
+        function obtenerNumeroModificaciones(proyectoId) {
+            const modificaciones = localStorage.getItem('modificaciones_proyecto');
+            if (!modificaciones) return 0;
+            const todasMods = JSON.parse(modificaciones);
+            return (todasMods[proyectoId] || []).length;
+        }
+
         function cargarProyectos() {
             todosLosProyectos = obtenerProyectos();
             proyectosFiltrados = [...todosLosProyectos];
@@ -371,6 +379,10 @@
                             <div style="font-weight: 500;">${proyecto.nombre_proyecto}</div>
                             <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 2px;">
                                 ${proyecto.anio_proyecto}
+                                ${(() => {
+                                    const numMods = obtenerNumeroModificaciones(proyecto.proyecto_id);
+                                    return numMods > 0 ? `<span class="badge badge-warning" style="margin-left: 8px; font-size: 0.7rem;">${numMods} mod.</span>` : '';
+                                })()}
                             </div>
                         </td>
                         <td>
@@ -379,9 +391,14 @@
                         <td style="font-weight: 500;">${formatearMoneda(proyecto.valor_proyecto)}</td>
                         <td>${formatearFecha(proyecto.fecha_inicio)}</td>
                         <td>
-                            <button class="btn btn-ghost btn-sm" onclick="window.location.href='detalle-proyecto.html?id=${proyecto.proyecto_id}'">
-                                Ver detalles →
-                            </button>
+                            <div style="display: flex; gap: var(--space-2);">
+                                <button class="btn btn-ghost btn-sm" onclick="window.location.href='detalle-proyecto.html?id=${proyecto.proyecto_id}'" title="Ver detalles">
+                                    👁️
+                                </button>
+                                <button class="btn btn-ghost btn-sm" onclick="window.location.href='modificaciones-proyecto.html?id=${proyecto.proyecto_id}'" title="Modificaciones">
+                                    📊
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
