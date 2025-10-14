@@ -1,0 +1,102 @@
+/* Importar fuentes */
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Hind:wght@300;400;500;600;700&display=swap');
+
+/* Sistema de Diseño Minimalista - Paleta Corporativa */
+:root {
+    /* Colores Corporativos */
+    --primary-color: #CC6628;        /* Naranja */
+    --primary-hover: #B35620;
+    --primary-light: #FFF4ED;
+    
+    --secondary-color: #FE9D12;      /* Amarillo */
+    --secondary-hover: #E58A0A;
+    --secondary-light: #FFF8E6;
+    
+    /* Grises Corporativos */
+    --gray-dark: #595959;            /* Gris oscuro */
+    --gray-medium: #A6A6A6;          /* Gris claro */
+    --gray-light: #E5E5E5;
+    --gray-lighter: #F5F5F5;
+    
+    /* Colores de fondo minimalistas */
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #FAFAFA;
+    --bg-tertiary: #F5F5F5;
+    
+    /* Sidebar minimalista */
+    --sidebar-bg: #FFFFFF;
+    --sidebar-border: #E5E5E5;
+    --sidebar-hover: #F5F5F5;
+    --sidebar-active: #FFF4ED;
+    --sidebar-text: #595959;
+    --sidebar-text-active: #CC6628;
+    
+    /* Texto */
+    --text-primary: #595959;
+    --text-secondary: #A6A6A6;
+    --text-tertiary: #CCCCCC;
+    --text-white: #FFFFFF;
+    --text-dark: #2C2C2C;
+    
+    /* Bordes minimalistas */
+    --border-color: #E5E5E5;
+    --border-light: #F0F0F0;
+    
+    /* Estados */
+    --success-color: #4CAF50;
+    --success-bg: #F1F8F4;
+    --error-color: #E53935;
+    --error-bg: #FFEBEE;
+    --warning-color: #FE9D12;
+    --warning-bg: #FFF8E6;
+    --info-color: #2196F3;
+    --info-bg: #E3F2FD;
+    
+    /* Sombras ultra sutiles */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 2px 8px 0 rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 4px 16px 0 rgb(0 0 0 / 0.08);
+    
+    /* Espaciado sistema 4px */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    
+    /* Tipografía Corporativa */
+    --font-heading: 'Lora', serif;       /* Para títulos */
+    --font-body: 'Hind', sans-serif;     /* Para texto */
+    
+    --font-xs: 0.75rem;      /* 12px */
+    --font-sm: 0.875rem;     /* 14px */
+    --font-base: 1rem;       /* 16px */
+    --font-lg: 1.125rem;     /* 18px */
+    --font-xl: 1.25rem;      /* 20px */
+    --font-2xl: 1.5rem;      /* 24px */
+    --font-3xl: 1.875rem;    /* 30px */
+    --font-4xl: 2.25rem;     /* 36px */
+    
+    /* Border radius minimalista */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+    
+    /* Transiciones */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Layout */
+    --sidebar-width: 260px;
+    --header-height: 70px;
+    --container-max: 1400px;
+}

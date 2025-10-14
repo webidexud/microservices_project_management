@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Proyecto - PMO System</title>
+    <link rel="stylesheet" href="../css/reset.css">
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .page-content {
+            max-width: 1400px;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: var(--space-6);
+        }
+
+        .main-form {
+            min-width: 0;
+        }
+
+        .sidebar-preview {
+            position: sticky;
+            top: calc(var(--header-height) + var(--space-6));
+            height: fit-content;
+        }
+
+        .back-button {
+            color: var(--text-secondary);
+            font-size: var(--font-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-5);
+            transition: color var(--transition-fast);
+            grid-column: 1 / -1;
+        }
+
+        .back-button:hover {
+            color: var(--primary-color);
+        }
+
+        .form-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .form-header {
+            padding: var(--space-6);
+            border-bottom: 1px solid var(--border-light);
+            background: var(--bg-secondary);
+        }
+
+        .form-header h2 {
+            font-size: var(--font-2xl);
+            margin-bottom: var(--space-2);
+        }
+
+        .form-header p {
+            color: var(--text-secondary);
+            font-size: var(--font-sm);
+        }
+
+        .form-body {
+            padding: var(--space-8);
+        }
+
+        .form-section {
+            margin-bottom: var(--space-8);
+            padding-bottom: var(--space-8);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .form-section-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-5);
+        }
+
+        .form-section-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .form-section-title {
+            font-size: var(--font-lg);
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-5);
+        }
+
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-5);
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        .char-count {
+            font-size: var(--font-xs);
+            text-align: right;
+            margin-top: var(--space-1);
+            font-weight: 600;
+            transition: color var(--transition-fast);
+        }
+
+        .char-count.green {
+            color: var(--success-color);
+        }
+
+        .char-count.orange {
+            color: var(--warning-color);
+        }
+
+        .char-count.red {
+            color: var(--error-color);
+        }
+
+        .form-input.calculated {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        .duration-display {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-3);
+        }
+
+        .duration-item {
+            background: var(--bg-tertiary);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+
+        .duration-value {
+            font-size: var(--font-2xl);
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .duration-label {
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            margin-top: var(--space-1);
+            font-weight: 600;
+        }
+
+        .benefit-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 1fr;
+            gap: var(--space-3);
+            align-items: end;
+        }
+
+        .secondary-emails-toggle {
+            margin-bottom: var(--space-4);
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            cursor: pointer;
+        }
+
+        .toggle-switch input[type="checkbox"] {
+            width: 44px;
+            height: 24px;
+            appearance: none;
+            background: var(--gray-light);
+            border-radius: var(--radius-full);
+            position: relative;
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .toggle-switch input[type="checkbox"]:checked {
+            background: var(--primary-color);
+        }
+
+        .toggle-switch input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: transform var(--transition-fast);
+        }
+
+        .toggle-switch input[type="checkbox"]:checked::before {
+            transform: translateX(20px);
+        }
+
+        .secondary-emails-container {
+            display: none;
+        }
+
+        .secondary-emails-container.active {
+            display: block;
+        }
+
+        .email-input-row {
+            display: flex;
+            gap: var(--space-2);
+            margin-bottom: var(--space-3);
+        }
+
+        .email-input-row input {
+            flex: 1;
+        }
+
+        .btn-remove-email {
+            padding: var(--space-2);
+            background: var(--error-bg);
+            color: var(--error-color);
+            border-radius: var(--radius-md);
+            font-size: var(--font-sm);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-remove-email:hover {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .btn-add-email {
+            width: 100%;
+            justify-content: center;
+            border: 2px dashed var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-add-email:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: var(--primary-light);
+        }
+
+        .confirm-modal-content {
+            max-width: 500px;
+        }
+
+        .confirm-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto var(--space-5);
+        }
+
+        .confirm-title {
+            font-size: var(--font-2xl);
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: var(--space-3);
+        }
+
+        .confirm-message {
+            color: var(--text-secondary);
+            font-size: var(--font-base);
+            margin-bottom: var(--space-8);
+            line-height: 1.6;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: var(--space-3);
+            justify-content: center;
+        }
+
+        .preview-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+        }
+
+        .preview-title {
+            font-size: var(--font-base);
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .preview-item {
+            margin-bottom: var(--space-4);
+        }
+
+        .preview-label {
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-1);
+        }
+
+        .preview-value {
+            font-size: var(--font-sm);
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .preview-value.large {
+            font-size: var(--font-xl);
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .preview-chart {
+            margin-top: var(--space-4);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-light);
+        }
+
+        .chart-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-2);
+        }
+
+        .chart-label {
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            min-width: 80px;
+        }
+
+        .chart-progress {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .chart-fill {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: var(--radius-full);
+            transition: width var(--transition-base);
+        }
+
+        .chart-value {
+            font-size: var(--font-xs);
+            color: var(--text-dark);
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        /* Gráfico de pastel */
+        .pie-chart-container {
+            margin-top: var(--space-5);
+            padding-top: var(--space-5);
+            border-top: 1px solid var(--border-light);
+        }
+
+        .pie-chart {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto var(--space-4);
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--primary-color) 0deg 0deg,
+                var(--secondary-color) 0deg 0deg,
+                var(--success-color) 0deg 0deg,
+                var(--info-color) 0deg 360deg
+            );
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .pie-chart-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .pie-chart-total {
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: var(--space-1);
+        }
+
+        .pie-chart-value {
+            font-size: var(--font-lg);
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .pie-legend {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .pie-legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: var(--font-xs);
+        }
+
+        .pie-legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .pie-legend-label {
+            flex: 1;
+            color: var(--text-secondary);
+        }
+
+        .pie-legend-value {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .form-footer {
+            padding: var(--space-5) var(--space-8);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-footer-info {
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+        }
+
+        .form-footer-actions {
+            display: flex;
+            gap: var(--space-3);
+        }
+
+        @media (max-width: 1200px) {
+            .page-content {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar-preview {
+                position: static;
+            }
+        }
+
+        @media (max-width: 968px) {
+            .form-row,
+            .form-row-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .benefit-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">✓</div>
+                <div class="sidebar-brand-text">PMO System</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-menu-item" onclick="window.location.href='../index.html'">
+                        <span class="sidebar-menu-icon">🏠</span>
+                        <span class="sidebar-menu-text">Inicio</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📊</span>
+                        <span class="sidebar-menu-text">Dashboard</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Gestión</div>
+                    <div class="sidebar-menu-item active">
+                        <span class="sidebar-menu-icon">📁</span>
+                        <span class="sidebar-menu-text">Proyectos</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📝</span>
+                        <span class="sidebar-menu-text">Contratos</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">👥</span>
+                        <span class="sidebar-menu-text">Contratistas</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📄</span>
+                        <span class="sidebar-menu-text">Documentos</span>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- HEADER -->
+            <header class="app-header">
+                <div class="header-left">
+                    <h1 class="header-title">Crear Proyecto</h1>
+                </div>
+                
+                <div class="header-right">
+                    <button class="header-icon-btn">🔍</button>
+                    <button class="header-icon-btn">🔔</button>
+                    <button class="header-icon-btn">💬</button>
+                    <div class="header-user">
+                        <div class="header-user-avatar">U</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <main class="page-content">
+                <a href="listar-proyectos.html" class="back-button">
+                    ← Volver a Proyectos
+                </a>
+
+                <!-- FORMULARIO PRINCIPAL -->
+                <div class="main-form">
+                    <form id="proyectoForm">
+                        <div class="form-container">
+                            <!-- HEADER -->
+                            <div class="form-header">
+                                <h2>Nuevo Proyecto</h2>
+                                <p>Complete la información del proyecto. Los campos con (*) son obligatorios.</p>
+                            </div>
+
+                            <!-- BODY -->
+                            <div class="form-body">
+                                
+                                <!-- INFORMACIÓN GENERAL -->
+                                <div class="form-section">
+                                    <div class="form-section-header">
+                                        <div class="form-section-icon">📋</div>
+                                        <h3 class="form-section-title">Información General</h3>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Año del Proyecto <span class="required">*</span></label>
+                                            <input type="number" id="anio_proyecto" name="anio_proyecto" class="form-input" required min="2020" max="2030">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label">Número Proyecto Externo</label>
+                                            <input type="text" id="numero_proyecto_externo" name="numero_proyecto_externo" class="form-input" maxlength="20" placeholder="Ej: CONV-2024-001">
+                                            <div class="char-count" id="numero_externo_counter">0/20</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group full">
+                                        <label class="form-label">Nombre del Proyecto <span class="required">*</span></label>
+                                        <input type="text" id="nombre_proyecto" name="nombre_proyecto" class="form-input" required maxlength="800" placeholder="Ingrese el nombre completo del proyecto">
+                                        <div class="char-count" id="nombre_counter">0/800</div>
+                                    </div>
+
+                                    <div class="form-group full">
+                                        <label class="form-label">Objeto del Proyecto <span class="required">*</span></label>
+                                        <textarea id="objeto_proyecto" name="objeto_proyecto" class="form-textarea" required placeholder="Describa el objeto y propósito del proyecto" maxlength="1800"></textarea>
+                                        <div class="char-count" id="objeto_counter">0/1800</div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Entidad <span class="required">*</span></label>
+                                            <select id="entidad_id" name="entidad_id" class="form-select" required>
+                                                <option value="">Seleccione...</option>
+                                                <option value="1">Ministerio de Educación Nacional</option>
+                                                <option value="2">SENA</option>
+                                                <option value="3">Alcaldía Mayor de Bogotá</option>
+                                                <option value="4">Colciencias - Minciencias</option>
+                                                <option value="5">Empresa Privada ABC S.A.S</option>
+                                                <option value="6">Gobernación de Cundinamarca</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Dependencia Ejecutora <span class="required">*</span></label>
+                                            <select id="dependencia_ejecutora_id" name="dependencia_ejecutora_id" class="form-select" required>
+                                                <option value="">Seleccione...</option>
+                                                <option value="1">Facultad de Ingeniería</option>
+                                                <option value="2">Facultad de Ciencias y Educación</option>
+                                                <option value="3">Facultad de Artes - ASAB</option>
+                                                <option value="4">Facultad Tecnológica</option>
+                                                <option value="5">Facultad de Medio Ambiente</option>
+                                                <option value="6">Oficina de Extensión</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- CLASIFICACIÓN -->
+                                <div class="form-section">
+                                    <div class="form-section-header">
+                                        <div class="form-section-icon">📊</div>
+                                        <h3 class="form-section-title">Clasificación del Proyecto</h3>
+                                    </div>
+                                    
+                                    <div class="form-row-3">
+                                        <div class="form-group">
+                                            <label class="form-label">Estado <span class="required">*</span></label>
+                                            <select id="estado_proyecto_id" name="estado_proyecto_id" class="form-select" required>
+                                                <option value="">Seleccione...</option>
+                                                <option value="0">EN ESTUDIO</option>
+                                                <option value="2">FORMULADO</option>
+                                                <option value="4">PRE-APROBADO</option>
+                                                <option value="6">APROBADO</option>
+                                                <option value="8">SUSCRITO</option>
+                                                <option value="12">SIN INICIAR</option>
+                                                <option value="14">EN EJECUCIÓN</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Tipo de Proyecto <span class="required">*</span></label>
+                                            <select id="tipo_proyecto_id" name="tipo_proyecto_id" class="form-select" required>
+                                                <option value="">Seleccione...</option>
+                                                <option value="1">Consultoría</option>
+                                                <option value="2">Investigación Aplicada</option>
+                                                <option value="3">Capacitación</option>
+                                                <option value="4">Desarrollo Tecnológico</option>
+                                                <option value="5">Extensión Social</option>
+                                                <option value="6">Asistencia Técnica</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Financiación <span class="required">*</span></label>
+                                            <select id="tipo_financiacion_id" name="tipo_financiacion_id" class="form-select" required>
+                                                <option value="">Seleccione...</option>
+                                                <option value="1">Recursos Propios</option>
+                                                <option value="2">Recursos Externos</option>
+                                                <option value="3">Cofinanciación</option>
+                                                <option value="4">Donación</option>
+                                                <option value="5">Recursos SGR</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Modalidad de Ejecución <span class="required">*</span></label>
+                                            <select id="modalidad_ejecucion_id" name="modalidad_ejecucion_id" class="form-select" required>
+                                                <option value="">Seleccione...</option>
+                                                <option value="1">Directa</option>
+                                                <option value="2">Indirecta</option>
+                                                <option value="3">Mixta</option>
+                                                <option value="4">Cofinanciación</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Modalidad de Contratación</label>
+                                            <select id="modalidad_contratacion_id" name="modalidad_contratacion_id" class="form-select">
+                                                <option value="">Seleccione...</option>
+                                                <option value="1">Licitación Pública</option>
+                                                <option value="2">Selección Abreviada</option>
+                                                <option value="3">Contratación Directa</option>
+                                                <option value="4">Mínima Cuantía</option>
+                                                <option value="5">Concurso de Méritos</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- INFORMACIÓN ECONÓMICA -->
+                                <div class="form-section">
+                                    <div class="form-section-header">
+                                        <div class="form-section-icon">💰</div>
+                                        <h3 class="form-section-title">Información Económica</h3>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Valor del Proyecto (COP) <span class="required">*</span></label>
+                                            <input type="text" id="valor_proyecto" name="valor_proyecto" class="form-input" required placeholder="1000000">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Código Contable</label>
+                                            <input type="text" id="codigo_contable" name="codigo_contable" class="form-input" maxlength="50" placeholder="Ej: 1234-5678-90">
+                                            <div class="char-count" id="codigo_contable_counter">0/50</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group full">
+                                        <label class="form-label">Beneficio Institucional</label>
+                                        <div class="benefit-row">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label class="form-label" style="margin-bottom: var(--space-2);">Porcentaje</label>
+                                                <input type="number" id="porcentaje_beneficio" class="form-input" value="12" min="0" max="100" step="0.01">
+                                            </div>
+                                            <div class="form-group" style="margin: 0;">
+                                                <label class="form-label" style="margin-bottom: var(--space-2);">Valor Calculado (COP)</label>
+                                                <input type="text" id="valor_beneficio" class="form-input" placeholder="0">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Aporte Universidad (COP)</label>
+                                            <input type="text" id="aporte_universidad" name="aporte_universidad" class="form-input" placeholder="0">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Aporte Entidad (COP)</label>
+                                            <input type="text" id="aporte_entidad" name="aporte_entidad" class="form-input" placeholder="0">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Cantidad de Beneficiarios</label>
+                                        <input type="number" id="cantidad_beneficiarios" name="cantidad_beneficiarios" class="form-input" min="0" placeholder="0">
+                                    </div>
+                                </div>
+
+                                <!-- CRONOGRAMA -->
+                                <div class="form-section">
+                                    <div class="form-section-header">
+                                        <div class="form-section-icon">📅</div>
+                                        <h3 class="form-section-title">Cronograma</h3>
+                                    </div>
+                                    
+                                    <div class="form-row-3">
+                                        <div class="form-group">
+                                            <label class="form-label">Fecha de Suscripción</label>
+                                            <input type="date" id="fecha_suscripcion" name="fecha_suscripcion" class="form-input">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Fecha de Inicio <span class="required">*</span></label>
+                                            <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-input" required>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Fecha de Finalización <span class="required">*</span></label>
+                                            <input type="date" id="fecha_finalizacion" name="fecha_finalizacion" class="form-input" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group full">
+                                        <label class="form-label">Duración del Proyecto (Calculada)</label>
+                                        <div class="duration-display">
+                                            <div class="duration-item">
+                                                <div class="duration-value" id="duration_years">0</div>
+                                                <div class="duration-label">Años</div>
+                                            </div>
+                                            <div class="duration-item">
+                                                <div class="duration-value" id="duration_months">0</div>
+                                                <div class="duration-label">Meses</div>
+                                            </div>
+                                            <div class="duration-item">
+                                                <div class="duration-value" id="duration_days">0</div>
+                                                <div class="duration-label">Días</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Funcionario Ordenador <span class="required">*</span></label>
+                                        <select id="funcionario_ordenador_id" name="funcionario_ordenador_id" class="form-select" required>
+                                            <option value="">Seleccione...</option>
+                                            <option value="1">Dr. Juan Carlos Pérez - Rector</option>
+                                            <option value="2">Dra. María Elena García - Vicerrectora Académica</option>
+                                            <option value="3">Dr. Carlos Andrés López - Vicerrector Administrativo</option>
+                                            <option value="4">Dra. Ana María Rodríguez - Decana Ingeniería</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- INFORMACIÓN ADICIONAL -->
+                                <div class="form-section">
+                                    <div class="form-section-header">
+                                        <div class="form-section-icon">📄</div>
+                                        <h3 class="form-section-title">Información Adicional</h3>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Correo Principal</label>
+                                            <input type="email" id="correo_principal" name="correo_principal" class="form-input" placeholder="correo@udistrital.edu.co">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Acto Administrativo</label>
+                                            <input type="text" id="acto_administrativo" name="acto_administrativo" class="form-input" maxlength="50" placeholder="Resolución o acto">
+                                            <div class="char-count" id="acto_counter">0/50</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- CORREOS SECUNDARIOS -->
+                                    <div class="form-group full secondary-emails-toggle">
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="toggle_secondary_emails">
+                                            <span style="font-size: var(--font-sm); font-weight: 500; color: var(--text-dark);">
+                                                ¿Desea registrar correos secundarios?
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    <div id="secondary_emails_container" class="secondary-emails-container">
+                                        <div id="emails_list"></div>
+                                        <button type="button" class="btn btn-add-email" onclick="agregarCorreoSecundario()">
+                                            + Agregar Correo Secundario
+                                        </button>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Enlace SECOP</label>
+                                        <input type="url" id="enlace_secop" name="enlace_secop" class="form-input" placeholder="https://www.colombiacompra.gov.co/..." maxlength="1000">
+                                        <div class="char-count" id="secop_counter">0/1000</div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Observaciones</label>
+                                        <textarea id="observaciones" name="observaciones" class="form-textarea" placeholder="Observaciones generales del proyecto" style="min-height: 80px;" maxlength="500"></textarea>
+                                        <div class="char-count" id="observaciones_counter">0/500</div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- FOOTER -->
+                            <div class="form-footer">
+                                <div class="form-footer-info">
+                                    <span style="color: var(--primary-color);">*</span> Campos obligatorios
+                                </div>
+                                <div class="form-footer-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="cancelarFormulario()">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        ✓ Crear Proyecto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- SIDEBAR PREVIEW -->
+                <div class="sidebar-preview">
+                    <div class="preview-card">
+                        <div class="preview-title">
+                            📊 Vista Previa del Proyecto
+                        </div>
+
+                        <div class="preview-item">
+                            <div class="preview-label">Nombre</div>
+                            <div class="preview-value" id="preview_nombre">Sin especificar</div>
+                        </div>
+
+                        <div class="preview-item">
+                            <div class="preview-label">Año</div>
+                            <div class="preview-value" id="preview_anio">-</div>
+                        </div>
+
+                        <div class="preview-item">
+                            <div class="preview-label">Valor Total</div>
+                            <div class="preview-value large" id="preview_valor">$0</div>
+                        </div>
+
+                        <div class="preview-item">
+                            <div class="preview-label">Beneficio Institucional</div>
+                            <div class="preview-value" id="preview_beneficio">$0</div>
+                        </div>
+
+                        <div class="preview-item">
+                            <div class="preview-label">Duración</div>
+                            <div class="preview-value" id="preview_duracion">Sin especificar</div>
+                        </div>
+
+                        <!-- GRÁFICO DE DISTRIBUCIÓN ECONÓMICA -->
+                        <div class="preview-chart">
+                            <div class="preview-label" style="margin-bottom: var(--space-3);">Distribución Económica</div>
+                            
+                            <div class="chart-bar">
+                                <div class="chart-label">Valor Total</div>
+                                <div class="chart-progress">
+                                    <div class="chart-fill" id="chart_total" style="width: 100%; background: var(--primary-color);"></div>
+                                </div>
+                                <div class="chart-value" id="chart_total_value">$0</div>
+                            </div>
+
+                            <div class="chart-bar">
+                                <div class="chart-label">Beneficio Inst.</div>
+                                <div class="chart-progress">
+                                    <div class="chart-fill" id="chart_beneficio" style="width: 0%; background: var(--secondary-color);"></div>
+                                </div>
+                                <div class="chart-value" id="chart_beneficio_value">$0</div>
+                            </div>
+
+                            <div class="chart-bar">
+                                <div class="chart-label">Aporte Entidad</div>
+                                <div class="chart-progress">
+                                    <div class="chart-fill" id="chart_entidad" style="width: 0%; background: var(--success-color);"></div>
+                                </div>
+                                <div class="chart-value" id="chart_entidad_value">$0</div>
+                            </div>
+
+                            <div class="chart-bar">
+                                <div class="chart-label">Aporte Univ.</div>
+                                <div class="chart-progress">
+                                    <div class="chart-fill" id="chart_universidad" style="width: 0%; background: var(--info-color);"></div>
+                                </div>
+                                <div class="chart-value" id="chart_universidad_value">$0</div>
+                            </div>
+                        </div>
+
+                        <!-- GRÁFICO DE PASTEL -->
+                        <div class="pie-chart-container">
+                            <div class="preview-label" style="margin-bottom: var(--space-4);">Distribución Porcentual</div>
+                            
+                            <div class="pie-chart" id="pieChart">
+                                <div class="pie-chart-center">
+                                    <div class="pie-chart-total">Total</div>
+                                    <div class="pie-chart-value" id="pie_total">100%</div>
+                                </div>
+                            </div>
+
+                            <div class="pie-legend">
+                                <div class="pie-legend-item">
+                                    <div class="pie-legend-color" style="background: var(--secondary-color);"></div>
+                                    <div class="pie-legend-label">Beneficio Inst.</div>
+                                    <div class="pie-legend-value" id="pie_beneficio_percent">0%</div>
+                                </div>
+                                <div class="pie-legend-item">
+                                    <div class="pie-legend-color" style="background: var(--success-color);"></div>
+                                    <div class="pie-legend-label">Aporte Entidad</div>
+                                    <div class="pie-legend-value" id="pie_entidad_percent">0%</div>
+                                </div>
+                                <div class="pie-legend-item">
+                                    <div class="pie-legend-color" style="background: var(--info-color);"></div>
+                                    <div class="pie-legend-label">Aporte Univ.</div>
+                                    <div class="pie-legend-value" id="pie_universidad_percent">0%</div>
+                                </div>
+                                <div class="pie-legend-item">
+                                    <div class="pie-legend-color" style="background: var(--warning-color);"></div>
+                                    <div class="pie-legend-label">Otros</div>
+                                    <div class="pie-legend-value" id="pie_otros_percent">0%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal confirm-modal-content">
+            <div class="modal-body" style="text-align: center; padding: var(--space-10);">
+                <div class="confirm-icon">📋</div>
+                <h3 class="confirm-title">¿Confirmar creación del proyecto?</h3>
+                <p class="confirm-message">
+                    Está a punto de crear un nuevo proyecto en el sistema. Por favor verifique que toda la información ingresada sea correcta antes de continuar.
+                </p>
+                <div class="confirm-actions">
+                    <button type="button" class="btn btn-secondary btn-lg" onclick="cerrarConfirmacion()">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary btn-lg" onclick="confirmarCreacion()">
+                        ✓ Sí, Crear Proyecto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ÉXITO -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal">
+            <div class="modal-body" style="text-align: center; padding: var(--space-12);">
+                <div style="font-size: 72px; margin-bottom: var(--space-5);">✓</div>
+                <h3 style="font-size: var(--font-3xl); font-weight: 700; margin-bottom: var(--space-3); color: var(--primary-color);">
+                    ¡Proyecto Creado!
+                </h3>
+                <div style="font-size: var(--font-4xl); font-weight: 700; color: var(--text-dark); margin: var(--space-5) 0;" id="projectIdDisplay">
+                    #0
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-8); font-size: var(--font-base);">
+                    El proyecto ha sido registrado correctamente en el sistema
+                </p>
+                <button class="btn btn-primary btn-lg" onclick="cerrarModal()">
+                    Ver Proyecto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/proyectos.js"></script>
+    <script>
+        // Auto-rellenar año actual
+        document.getElementById('anio_proyecto').value = CONFIG.CURRENT_YEAR;
+
+        // Array para correos secundarios
+        let correosSecundarios = [];
+
+        // Función para formatear número con separadores de miles (solo visual)
+        function formatearNumeroConPuntos(numero) {
+            if (!numero) return '';
+            // Separar parte entera y decimal
+            const partes = numero.toString().split('.');
+            // Agregar puntos cada 3 dígitos en la parte entera
+            partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return partes.join('.');
+        }
+
+        // Función para limpiar formato y obtener número
+        function limpiarNumero(valor) {
+            if (!valor) return 0;
+            // Remover todos los puntos (separadores de miles) y convertir a número
+            return parseFloat(valor.toString().replace(/\./g, '')) || 0;
+        }
+
+        // Aplicar formato visual con puntos a campos económicos
+        function setupFormatoEconomico(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            
+            input.addEventListener('input', function(e) {
+                // Guardar posición del cursor
+                const cursorPos = this.selectionStart;
+                
+                // Remover todo excepto dígitos
+                let valor = this.value.replace(/\D/g, '');
+                
+                // Guardar longitud antes de formatear
+                const oldLength = valor.length;
+                
+                // Aplicar formato visual
+                if (valor) {
+                    this.value = formatearNumeroConPuntos(valor);
+                } else {
+                    this.value = '';
+                }
+                
+                // Calcular nueva posición del cursor
+                const newLength = this.value.length;
+                const diff = newLength - oldLength;
+                
+                // Ajustar cursor considerando los puntos añadidos
+                let newCursorPos = cursorPos + diff;
+                this.setSelectionRange(newCursorPos, newCursorPos);
+            });
+        }
+
+        // Aplicar formato a campos económicos
+        setupFormatoEconomico('valor_proyecto');
+        setupFormatoEconomico('valor_beneficio');
+        setupFormatoEconomico('aporte_entidad');
+        setupFormatoEconomico('aporte_universidad');
+
+        // Calcular beneficio desde porcentaje
+        function calcularBeneficioDesdePorentaje() {
+            const valorProyecto = limpiarNumero(document.getElementById('valor_proyecto').value);
+            const porcentaje = parseFloat(document.getElementById('porcentaje_beneficio').value) || 0;
+            
+            const beneficio = (valorProyecto * porcentaje) / 100;
+            document.getElementById('valor_beneficio').value = formatearNumeroConPuntos(Math.round(beneficio));
+            
+            calcularAporteEntidad();
+            actualizarPreview();
+        }
+
+        // Calcular porcentaje desde valor de beneficio
+        function calcularPorcentajeDesdeBeneficio() {
+            const valorProyecto = limpiarNumero(document.getElementById('valor_proyecto').value);
+            const beneficio = limpiarNumero(document.getElementById('valor_beneficio').value);
+            
+            if (valorProyecto > 0) {
+                const porcentaje = (beneficio / valorProyecto) * 100;
+                document.getElementById('porcentaje_beneficio').value = porcentaje.toFixed(2);
+            }
+            
+            calcularAporteEntidad();
+            actualizarPreview();
+        }
+
+        // Calcular aporte entidad (sugerido automáticamente)
+        function calcularAporteEntidad() {
+            const valorProyecto = limpiarNumero(document.getElementById('valor_proyecto').value);
+            const aporteUniversidad = limpiarNumero(document.getElementById('aporte_universidad').value);
+            
+            const aporteEntidadCalculado = valorProyecto - aporteUniversidad;
+            
+            if (aporteEntidadCalculado >= 0) {
+                document.getElementById('aporte_entidad').value = formatearNumeroConPuntos(aporteEntidadCalculado);
+            }
+            
+            actualizarPreview();
+        }
+
+        // Función para actualizar contador con colores
+        function setupCharCounter(inputId, counterId, maxLength) {
+            const input = document.getElementById(inputId);
+            const counter = document.getElementById(counterId);
+            
+            if (!input || !counter) return;
+            
+            input.addEventListener('input', function() {
+                const length = this.value.length;
+                counter.textContent = `${length}/${maxLength}`;
+                
+                const percentage = (length / maxLength) * 100;
+                counter.classList.remove('green', 'orange', 'red');
+                
+                if (percentage < 70) {
+                    counter.classList.add('green');
+                } else if (percentage < 90) {
+                    counter.classList.add('orange');
+                } else {
+                    counter.classList.add('red');
+                }
+            });
+        }
+
+        // Setup contadores
+        setupCharCounter('nombre_proyecto', 'nombre_counter', 800);
+        setupCharCounter('numero_proyecto_externo', 'numero_externo_counter', 20);
+        setupCharCounter('objeto_proyecto', 'objeto_counter', 1800);
+        setupCharCounter('codigo_contable', 'codigo_contable_counter', 50);
+        setupCharCounter('acto_administrativo', 'acto_counter', 50);
+        setupCharCounter('enlace_secop', 'secop_counter', 1000);
+        setupCharCounter('observaciones', 'observaciones_counter', 500);
+
+        // Eliminar saltos de línea al pegar en objeto del proyecto
+        document.getElementById('objeto_proyecto').addEventListener('paste', function(e) {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            const cleanText = text.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/\s+/g, ' ');
+            
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            const currentValue = this.value;
+            
+            this.value = currentValue.substring(0, start) + cleanText + currentValue.substring(end);
+            this.selectionStart = this.selectionEnd = start + cleanText.length;
+            
+            this.dispatchEvent(new Event('input'));
+        });
+
+        // Calcular duración del proyecto
+        function calcularDuracion() {
+            const fechaInicio = document.getElementById('fecha_inicio').value;
+            const fechaFin = document.getElementById('fecha_finalizacion').value;
+            
+            if (!fechaInicio || !fechaFin) {
+                document.getElementById('duration_years').textContent = '0';
+                document.getElementById('duration_months').textContent = '0';
+                document.getElementById('duration_days').textContent = '0';
+                document.getElementById('preview_duracion').textContent = 'Sin especificar';
+                return;
+            }
+            
+            const inicio = new Date(fechaInicio);
+            const fin = new Date(fechaFin);
+            
+            if (fin < inicio) {
+                document.getElementById('duration_years').textContent = '0';
+                document.getElementById('duration_months').textContent = '0';
+                document.getElementById('duration_days').textContent = '0';
+                document.getElementById('preview_duracion').textContent = 'Fechas inválidas';
+                return;
+            }
+            
+            let years = fin.getFullYear() - inicio.getFullYear();
+            let months = fin.getMonth() - inicio.getMonth();
+            let days = fin.getDate() - inicio.getDate();
+            
+            if (days < 0) {
+                months--;
+                const lastMonth = new Date(fin.getFullYear(), fin.getMonth(), 0);
+                days += lastMonth.getDate();
+            }
+            
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+            
+            document.getElementById('duration_years').textContent = years;
+            document.getElementById('duration_months').textContent = months;
+            document.getElementById('duration_days').textContent = days;
+            
+            // Update preview con formato legible
+            let duracionTexto = '';
+            if (years > 0) duracionTexto += `${years} ${years === 1 ? 'año' : 'años'}`;
+            if (months > 0) duracionTexto += `${duracionTexto ? ' ' : ''}${months} ${months === 1 ? 'mes' : 'meses'}`;
+            if (days > 0) duracionTexto += `${duracionTexto ? ' ' : ''}${days} ${days === 1 ? 'día' : 'días'}`;
+            if (!duracionTexto) duracionTexto = '0 días';
+            
+            document.getElementById('preview_duracion').textContent = duracionTexto;
+        }
+
+        document.getElementById('fecha_inicio').addEventListener('change', calcularDuracion);
+        document.getElementById('fecha_finalizacion').addEventListener('change', calcularDuracion);
+
+        // Validar que fecha de finalización no sea anterior a fecha de inicio
+        document.getElementById('fecha_inicio').addEventListener('change', function() {
+            const fechaInicio = this.value;
+            const fechaFinInput = document.getElementById('fecha_finalizacion');
+            
+            if (fechaInicio) {
+                // Establecer fecha mínima para fecha de finalización
+                fechaFinInput.min = fechaInicio;
+                
+                // Si ya hay una fecha de fin y es anterior, limpiarla
+                if (fechaFinInput.value && fechaFinInput.value < fechaInicio) {
+                    fechaFinInput.value = '';
+                    mostrarNotificacion('La fecha de finalización no puede ser anterior a la fecha de inicio', 'error');
+                }
+            }
+        });
+
+        document.getElementById('fecha_finalizacion').addEventListener('change', function() {
+            const fechaInicio = document.getElementById('fecha_inicio').value;
+            const fechaFin = this.value;
+            
+            if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
+                this.value = '';
+                mostrarNotificacion('La fecha de finalización no puede ser anterior a la fecha de inicio', 'error');
+            }
+        });
+
+        // Calcular beneficio institucional y aporte UD automáticamente
+        function calcularBeneficio() {
+            calcularBeneficioDesdePorentaje();
+        }
+
+        // Calcular aporte entidad (sugerido automáticamente)
+        function calcularAporteEntidad() {
+            const valorProyecto = limpiarNumero(document.getElementById('valor_proyecto').value);
+            const aporteUniversidad = limpiarNumero(document.getElementById('aporte_universidad').value);
+            
+            const aporteEntidadCalculado = valorProyecto - aporteUniversidad;
+            
+            if (aporteEntidadCalculado >= 0) {
+                document.getElementById('aporte_entidad').value = formatearNumeroConPuntos(aporteEntidadCalculado);
+            }
+            
+            actualizarPreview();
+        }
+
+        document.getElementById('valor_proyecto').addEventListener('input', calcularBeneficio);
+        document.getElementById('porcentaje_beneficio').addEventListener('input', calcularBeneficioDesdePorentaje);
+        document.getElementById('valor_beneficio').addEventListener('input', calcularPorcentajeDesdeBeneficio);
+        document.getElementById('aporte_universidad').addEventListener('input', calcularAporteEntidad);
+
+        // Toggle correos secundarios
+        document.getElementById('toggle_secondary_emails').addEventListener('change', function() {
+            const container = document.getElementById('secondary_emails_container');
+            if (this.checked) {
+                container.classList.add('active');
+            } else {
+                // No permitir desactivar si ya hay correos agregados
+                if (correosSecundarios.filter(email => email && email.trim() !== '').length > 0) {
+                    this.checked = true;
+                    mostrarNotificacion('No puede desactivar los correos secundarios si ya ha agregado alguno. Elimine todos los correos primero.', 'error');
+                    return;
+                }
+                container.classList.remove('active');
+                correosSecundarios = [];
+                document.getElementById('emails_list').innerHTML = '';
+            }
+        });
+
+        // Agregar correo secundario
+        function agregarCorreoSecundario(email = '') {
+            const index = correosSecundarios.length;
+            correosSecundarios.push(email);
+            
+            const emailsList = document.getElementById('emails_list');
+            const emailRow = document.createElement('div');
+            emailRow.className = 'email-input-row';
+            emailRow.id = `email_row_${index}`;
+            emailRow.innerHTML = `
+                <input type="email" class="form-input" placeholder="correo@ejemplo.com" value="${email}"
+                       onchange="correosSecundarios[${index}] = this.value"
+                       onkeydown="handleEmailKeydown(event, ${index})">
+                <button type="button" class="btn-remove-email" onclick="eliminarCorreo(${index})">
+                    ×
+                </button>
+            `;
+            
+            emailsList.appendChild(emailRow);
+            
+            if (!email) {
+                emailRow.querySelector('input').focus();
+            }
+        }
+
+        // Manejar Enter en campos de correo
+        function handleEmailKeydown(event, index) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const email = input.value.trim();
+                
+                if (email && validateEmail(email)) {
+                    correosSecundarios[index] = email;
+                    agregarCorreoSecundario();
+                } else if (email) {
+                    mostrarNotificacion('Por favor ingrese un correo válido', 'error');
+                }
+            }
+        }
+
+        // Validar formato de email
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        // Eliminar correo secundario
+        function eliminarCorreo(index) {
+            const row = document.getElementById(`email_row_${index}`);
+            if (row) {
+                row.remove();
+                correosSecundarios[index] = null;
+            }
+        }
+
+        // Actualizar vista previa
+        function actualizarPreview() {
+            const nombre = document.getElementById('nombre_proyecto').value || 'Sin especificar';
+            document.getElementById('preview_nombre').textContent = nombre.substring(0, 50) + (nombre.length > 50 ? '...' : '');
+            
+            const anio = document.getElementById('anio_proyecto').value || '-';
+            document.getElementById('preview_anio').textContent = anio;
+            
+            const valorProyecto = limpiarNumero(document.getElementById('valor_proyecto').value);
+            const beneficio = limpiarNumero(document.getElementById('valor_beneficio').value);
+            const aporteEntidad = limpiarNumero(document.getElementById('aporte_entidad').value);
+            const aporteUniversidad = limpiarNumero(document.getElementById('aporte_universidad').value);
+            
+            document.getElementById('preview_valor').textContent = formatearMoneda(valorProyecto);
+            document.getElementById('preview_beneficio').textContent = formatearMoneda(beneficio);
+            
+            if (valorProyecto > 0) {
+                const porcentajeBeneficio = (beneficio / valorProyecto) * 100;
+                const porcentajeEntidad = (aporteEntidad / valorProyecto) * 100;
+                const porcentajeUniversidad = (aporteUniversidad / valorProyecto) * 100;
+                const porcentajeOtros = 100 - porcentajeBeneficio - porcentajeEntidad - porcentajeUniversidad;
+                
+                // Actualizar barras
+                document.getElementById('chart_beneficio').style.width = porcentajeBeneficio + '%';
+                document.getElementById('chart_entidad').style.width = porcentajeEntidad + '%';
+                document.getElementById('chart_universidad').style.width = porcentajeUniversidad + '%';
+                
+                document.getElementById('chart_total_value').textContent = formatearMoneda(valorProyecto);
+                document.getElementById('chart_beneficio_value').textContent = formatearMoneda(beneficio);
+                document.getElementById('chart_entidad_value').textContent = formatearMoneda(aporteEntidad);
+                document.getElementById('chart_universidad_value').textContent = formatearMoneda(aporteUniversidad);
+                
+                // Actualizar gráfico de pastel
+                actualizarGraficoPastel(porcentajeBeneficio, porcentajeEntidad, porcentajeUniversidad, porcentajeOtros);
+            } else {
+                actualizarGraficoPastel(0, 0, 0, 100);
+            }
+        }
+
+        // Actualizar gráfico de pastel
+        function actualizarGraficoPastel(beneficio, entidad, universidad, otros) {
+            const pieChart = document.getElementById('pieChart');
+            
+            // Calcular ángulos acumulativos
+            let angle1 = beneficio * 3.6; // Beneficio
+            let angle2 = angle1 + (entidad * 3.6); // Entidad
+            let angle3 = angle2 + (universidad * 3.6); // Universidad
+            
+            // Crear gradiente cónico
+            pieChart.style.background = `conic-gradient(
+                var(--secondary-color) 0deg ${angle1}deg,
+                var(--success-color) ${angle1}deg ${angle2}deg,
+                var(--info-color) ${angle2}deg ${angle3}deg,
+                var(--warning-color) ${angle3}deg 360deg
+            )`;
+            
+            // Actualizar leyenda
+            document.getElementById('pie_beneficio_percent').textContent = beneficio.toFixed(1) + '%';
+            document.getElementById('pie_entidad_percent').textContent = entidad.toFixed(1) + '%';
+            document.getElementById('pie_universidad_percent').textContent = universidad.toFixed(1) + '%';
+            document.getElementById('pie_otros_percent').textContent = otros.toFixed(1) + '%';
+        }
+
+        document.getElementById('nombre_proyecto').addEventListener('input', actualizarPreview);
+        document.getElementById('anio_proyecto').addEventListener('input', actualizarPreview);
+        document.getElementById('valor_proyecto').addEventListener('input', actualizarPreview);
+        document.getElementById('aporte_universidad').addEventListener('input', actualizarPreview);
+        document.getElementById('aporte_entidad').addEventListener('input', actualizarPreview);
+
+        let datosFormularioTemp = null;
+
+        document.getElementById('proyectoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            try {
+                const formData = new FormData(this);
+                const datos = {};
+                formData.forEach((value, key) => {
+                    if (['valor_proyecto', 'aporte_universidad', 'aporte_entidad'].includes(key)) {
+                        datos[key] = limpiarNumero(value);
+                    } else {
+                        datos[key] = value || null;
+                    }
+                });
+
+                datos.correos_secundarios = correosSecundarios.filter(email => email && email.trim() !== '');
+                datos.valor_beneficio_institucional = limpiarNumero(document.getElementById('valor_beneficio').value);
+                datos.porcentaje_beneficio_institucional = document.getElementById('porcentaje_beneficio').value;
+
+                validarFechas(datos.fecha_inicio, datos.fecha_finalizacion);
+                validarValores(
+                    parseFloat(datos.valor_proyecto),
+                    parseFloat(datos.aporte_universidad) || 0,
+                    parseFloat(datos.aporte_entidad) || 0
+                );
+
+                datosFormularioTemp = datos;
+                document.getElementById('confirmModal').classList.add('show');
+
+            } catch (error) {
+                mostrarNotificacion('❌ ' + error.message, 'error');
+            }
+        });
+
+        function cerrarConfirmacion() {
+            document.getElementById('confirmModal').classList.remove('show');
+            datosFormularioTemp = null;
+        }
+
+        function confirmarCreacion() {
+            if (!datosFormularioTemp) return;
+
+            try {
+                const proyecto = crearProyecto(datosFormularioTemp);
+                document.getElementById('confirmModal').classList.remove('show');
+                document.getElementById('projectIdDisplay').textContent = `#${proyecto.proyecto_id}`;
+                document.getElementById('successModal').classList.add('show');
+                console.log('✅ Proyecto creado:', proyecto);
+            } catch (error) {
+                mostrarNotificacion('❌ ' + error.message, 'error');
+                cerrarConfirmacion();
+            }
+        }
+
+        function cancelarFormulario() {
+            if (confirm('¿Está seguro que desea cancelar? Se perderán todos los datos ingresados.')) {
+                window.location.href = 'listar-proyectos.html';
+            }
+        }
+
+        function cerrarModal() {
+            document.getElementById('successModal').classList.remove('show');
+            window.location.href = 'listar-proyectos.html';
+        }
+
+        actualizarPreview();
+    </script>
+</body>
+</html>

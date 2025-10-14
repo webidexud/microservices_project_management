@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proyectos - PMO System</title>
+    <link rel="stylesheet" href="../css/reset.css">
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .filter-bar {
+            background: white;
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            margin-bottom: var(--space-4);
+            display: flex;
+            gap: var(--space-3);
+            flex-wrap: wrap;
+        }
+
+        .filter-item {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 2;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: var(--space-3) var(--space-3) var(--space-3) 40px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: var(--font-sm);
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: var(--space-1);
+            background: var(--bg-tertiary);
+            padding: var(--space-1);
+            border-radius: var(--radius-md);
+        }
+
+        .view-toggle-btn {
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+        }
+
+        .view-toggle-btn.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .project-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            transition: all var(--transition-fast);
+            cursor: pointer;
+        }
+
+        .project-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .project-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: var(--space-3);
+        }
+
+        .project-id {
+            font-size: var(--font-xs);
+            font-weight: 600;
+            color: var(--text-tertiary);
+        }
+
+        .project-title {
+            font-size: var(--font-base);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+            line-height: 1.4;
+        }
+
+        .project-meta {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+        }
+
+        .project-meta-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .project-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-light);
+        }
+
+        .project-value {
+            font-size: var(--font-base);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">✓</div>
+                <div class="sidebar-brand-text">PMO System</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-menu-item" onclick="window.location.href='../index.html'">
+                        <span class="sidebar-menu-icon">🏠</span>
+                        <span class="sidebar-menu-text">Inicio</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📊</span>
+                        <span class="sidebar-menu-text">Dashboard</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Gestión</div>
+                    <div class="sidebar-menu-item active">
+                        <span class="sidebar-menu-icon">📁</span>
+                        <span class="sidebar-menu-text">Proyectos</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📝</span>
+                        <span class="sidebar-menu-text">Contratos</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">👥</span>
+                        <span class="sidebar-menu-text">Contratistas</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📄</span>
+                        <span class="sidebar-menu-text">Documentos</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Reportes</div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">📈</span>
+                        <span class="sidebar-menu-text">Financiero</span>
+                    </div>
+                    <div class="sidebar-menu-item">
+                        <span class="sidebar-menu-icon">⏱️</span>
+                        <span class="sidebar-menu-text">Seguimiento</span>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- HEADER -->
+            <header class="app-header">
+                <div class="header-left">
+                    <h1 class="header-title">Proyectos</h1>
+                </div>
+                
+                <div class="header-right">
+                    <button class="header-icon-btn">🔍</button>
+                    <button class="header-icon-btn">🔔</button>
+                    <button class="header-icon-btn">💬</button>
+                    <div class="header-user">
+                        <div class="header-user-avatar">U</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <main class="page-content">
+                <!-- HEADER CON ACCIÓN -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <div>
+                        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 4px;">
+                            Todos los Proyectos
+                        </h2>
+                        <p style="color: var(--text-secondary); font-size: var(--font-sm);">
+                            <span id="projectCount">0</span> proyectos registrados
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" onclick="window.location.href='crear-proyecto.html'">
+                        ➕ Nuevo Proyecto
+                    </button>
+                </div>
+
+                <!-- FILTROS -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Buscar proyectos...">
+                    </div>
+                    
+                    <div class="filter-item">
+                        <select class="form-select" id="filterEstado">
+                            <option value="">Todos los estados</option>
+                            <option value="0">EN ESTUDIO</option>
+                            <option value="2">FORMULADO</option>
+                            <option value="4">PRE-APROBADO</option>
+                            <option value="6">APROBADO</option>
+                            <option value="8">SUSCRITO</option>
+                            <option value="12">SIN INICIAR</option>
+                            <option value="14">EN EJECUCIÓN</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <select class="form-select" id="filterAnio">
+                            <option value="">Todos los años</option>
+                        </select>
+                    </div>
+
+                    <div class="view-toggle">
+                        <button class="view-toggle-btn" id="viewGrid">📱</button>
+                        <button class="view-toggle-btn active" id="viewTable">📋</button>
+                    </div>
+                </div>
+
+                <!-- VISTA TABLA (Por defecto) -->
+                <div id="tableView">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Proyecto</th>
+                                    <th>Estado</th>
+                                    <th>Valor</th>
+                                    <th>Fecha Inicio</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VISTA GRID (Oculta por defecto) -->
+                <div id="gridView" style="display: none;">
+                    <div class="project-grid" id="projectGrid"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        let todosLosProyectos = [];
+        let proyectosFiltrados = [];
+
+        function obtenerNombreEstado(estadoId) {
+            const estados = {
+                '0': { nombre: 'EN ESTUDIO', clase: 'gray' },
+                '2': { nombre: 'FORMULADO', clase: 'primary' },
+                '4': { nombre: 'PRE-APROBADO', clase: 'warning' },
+                '6': { nombre: 'APROBADO', clase: 'success' },
+                '8': { nombre: 'SUSCRITO', clase: 'success' },
+                '12': { nombre: 'SIN INICIAR', clase: 'warning' },
+                '14': { nombre: 'EN EJECUCIÓN', clase: 'primary' }
+            };
+            return estados[estadoId] || { nombre: 'DESCONOCIDO', clase: 'gray' };
+        }
+
+        // Obtener número de modificaciones de un proyecto
+        function obtenerNumeroModificaciones(proyectoId) {
+            const modificaciones = localStorage.getItem('modificaciones_proyecto');
+            if (!modificaciones) return 0;
+            const todasMods = JSON.parse(modificaciones);
+            return (todasMods[proyectoId] || []).length;
+        }
+
+        function cargarProyectos() {
+            todosLosProyectos = obtenerProyectos();
+            proyectosFiltrados = [...todosLosProyectos];
+            
+            // Actualizar contador
+            document.getElementById('projectCount').textContent = todosLosProyectos.length;
+            
+            // Llenar select de años
+            const anios = [...new Set(todosLosProyectos.map(p => p.anio_proyecto))].sort((a, b) => b - a);
+            const selectAnio = document.getElementById('filterAnio');
+            anios.forEach(anio => {
+                const option = document.createElement('option');
+                option.value = anio;
+                option.textContent = anio;
+                selectAnio.appendChild(option);
+            });
+            
+            renderizarVista();
+        }
+
+        function filtrarProyectos() {
+            const busqueda = document.getElementById('searchInput').value.toLowerCase();
+            const estadoFiltro = document.getElementById('filterEstado').value;
+            const anioFiltro = document.getElementById('filterAnio').value;
+            
+            proyectosFiltrados = todosLosProyectos.filter(proyecto => {
+                const coincideBusqueda = proyecto.nombre_proyecto.toLowerCase().includes(busqueda) ||
+                                        proyecto.objeto_proyecto.toLowerCase().includes(busqueda);
+                const coincideEstado = !estadoFiltro || proyecto.estado_proyecto_id === estadoFiltro;
+                const coincideAnio = !anioFiltro || proyecto.anio_proyecto == anioFiltro;
+                
+                return coincideBusqueda && coincideEstado && coincideAnio;
+            });
+            
+            renderizarVista();
+        }
+
+        function renderizarTabla() {
+            const tbody = document.getElementById('tableBody');
+            
+            if (proyectosFiltrados.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <div class="empty-state-title">No se encontraron proyectos</div>
+                                <div class="empty-state-description">
+                                    ${todosLosProyectos.length === 0 ? 'Comience creando su primer proyecto' : 'Intente ajustar los filtros'}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = proyectosFiltrados.map(proyecto => {
+                const estado = obtenerNombreEstado(proyecto.estado_proyecto_id);
+                return `
+                    <tr>
+                        <td><strong>#${proyecto.proyecto_id}</strong></td>
+                        <td>
+                            <div style="font-weight: 500;">${proyecto.nombre_proyecto}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 2px;">
+                                ${proyecto.anio_proyecto}
+                                ${(() => {
+                                    const numMods = obtenerNumeroModificaciones(proyecto.proyecto_id);
+                                    return numMods > 0 ? `<span class="badge badge-warning" style="margin-left: 8px; font-size: 0.7rem;">${numMods} mod.</span>` : '';
+                                })()}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge badge-${estado.clase}">${estado.nombre}</span>
+                        </td>
+                        <td style="font-weight: 500;">${formatearMoneda(proyecto.valor_proyecto)}</td>
+                        <td>${formatearFecha(proyecto.fecha_inicio)}</td>
+                        <td>
+                            <div style="display: flex; gap: var(--space-2);">
+                                <button class="btn btn-ghost btn-sm" onclick="window.location.href='detalle-proyecto.html?id=${proyecto.proyecto_id}'" title="Ver detalles">
+                                    👁️
+                                </button>
+                                <button class="btn btn-ghost btn-sm" onclick="window.location.href='modificaciones-proyecto.html?id=${proyecto.proyecto_id}'" title="Modificaciones">
+                                    📊
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderizarGrid() {
+            const grid = document.getElementById('projectGrid');
+            
+            if (proyectosFiltrados.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1;">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-title">No se encontraron proyectos</div>
+                            <div class="empty-state-description">
+                                ${todosLosProyectos.length === 0 ? 'Comience creando su primer proyecto' : 'Intente ajustar los filtros'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            grid.innerHTML = proyectosFiltrados.map(proyecto => {
+                const estado = obtenerNombreEstado(proyecto.estado_proyecto_id);
+                return `
+                    <div class="project-card" onclick="window.location.href='detalle-proyecto.html?id=${proyecto.proyecto_id}'">
+                        <div class="project-card-header">
+                            <span class="project-id">#${proyecto.proyecto_id}</span>
+                            <span class="badge badge-${estado.clase}">${estado.nombre}</span>
+                        </div>
+                        
+                        <h3 class="project-title">${proyecto.nombre_proyecto}</h3>
+                        
+                        <div class="project-meta">
+                            <div class="project-meta-item">
+                                <span>📅</span>
+                                <span>${formatearFecha(proyecto.fecha_inicio)}</span>
+                            </div>
+                            <div class="project-meta-item">
+                                <span>📆</span>
+                                <span>Año ${proyecto.anio_proyecto}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="project-footer">
+                            <div class="project-value">${formatearMoneda(proyecto.valor_proyecto)}</div>
+                            <span style="color: var(--primary-color); font-size: var(--font-sm);">→</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderizarVista() {
+            const vistaActiva = document.querySelector('.view-toggle-btn.active').id;
+            
+            if (vistaActiva === 'viewTable') {
+                renderizarTabla();
+            } else {
+                renderizarGrid();
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', filtrarProyectos);
+        document.getElementById('filterEstado').addEventListener('change', filtrarProyectos);
+        document.getElementById('filterAnio').addEventListener('change', filtrarProyectos);
+
+        document.getElementById('viewGrid').addEventListener('click', function() {
+            document.getElementById('viewTable').classList.remove('active');
+            this.classList.add('active');
+            document.getElementById('tableView').style.display = 'none';
+            document.getElementById('gridView').style.display = 'block';
+            renderizarVista();
+        });
+
+        document.getElementById('viewTable').addEventListener('click', function() {
+            document.getElementById('viewGrid').classList.remove('active');
+            this.classList.add('active');
+            document.getElementById('gridView').style.display = 'none';
+            document.getElementById('tableView').style.display = 'block';
+            renderizarVista();
+        });
+
+        // Inicializar
+        cargarProyectos();
+    </script>
+</body>
+</html>
