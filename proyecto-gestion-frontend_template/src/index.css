@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background-light text-text-primary font-sans;
+  }
+  body.dark {
+    @apply bg-background-dark text-white;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, #0097A7 0%, #26C6DA 100%);
+  }
+  .gradient-soft {
+    background: linear-gradient(120deg, #E0F7FA 0%, #B2EBF2 100%);
+  }
+}
