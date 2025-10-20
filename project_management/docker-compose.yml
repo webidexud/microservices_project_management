@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proyecto-gestion-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Conectar al contenedor de base de datos existente
+      DB_HOST: db_siexud_new  # ← Nombre del contenedor existente
+      DB_PORT: 5432
+      POSTGRES_DB: nuevo_siexud
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
+      PORT: 8000
+    # Conectar a la red del contenedor db_siexud_new
+    network_mode: "bridge"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: proyecto-gestion-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    network_mode: "bridge"
