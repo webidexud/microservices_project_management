@@ -14,8 +14,10 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
       PORT: 8000
-    # Conectar a la red del contenedor db_siexud_new
-    network_mode: "bridge"
+    networks:
+      - default
+    external_links:
+      - db_siexud_new:db_siexud_new
 
   frontend:
     build:
@@ -26,4 +28,9 @@ services:
       - "3000:80"
     depends_on:
       - backend
-    network_mode: "bridge"
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge

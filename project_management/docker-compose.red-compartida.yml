@@ -1,0 +1,49 @@
+# Docker Compose - Configuración con Red Compartida
+#
+# Esta configuración conecta los servicios a una red compartida
+# donde ya existe el contenedor db_siexud_new
+#
+# USO:
+# 1. Crear la red compartida:
+#    docker network create siexud_shared_network
+#
+# 2. Conectar el contenedor de BD a la red:
+#    docker network connect siexud_shared_network db_siexud_new
+#
+# 3. Levantar servicios con este archivo:
+#    docker-compose -f docker-compose.red-compartida.yml up -d
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proyecto-gestion-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: db_siexud_new
+      DB_PORT: 5432
+      POSTGRES_DB: nuevo_siexud
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
+      PORT: 8000
+    networks:
+      - siexud_shared_network
+    depends_on:
+      - frontend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: proyecto-gestion-frontend
+    ports:
+      - "3000:80"
+    networks:
+      - siexud_shared_network
+
+networks:
+  siexud_shared_network:
+    external: true
+    name: siexud_shared_network
