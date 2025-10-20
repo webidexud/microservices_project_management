@@ -7,15 +7,18 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Conectar al contenedor de base de datos existente
-      DB_HOST: db_siexud_new  # ← Nombre del contenedor existente
+      DB_HOST: db_siexud_new
       DB_PORT: 5432
       POSTGRES_DB: nuevo_siexud
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
       PORT: 8000
-    # Conectar a la red del contenedor db_siexud_new
-    network_mode: "bridge"
+      NODE_ENV: production
+    extra_hosts:
+      - "db_siexud_new:host-gateway"  # Esto permite la conexión al PostgreSQL externo
+    networks:
+      - app_network
+    restart: unless-stopped
 
   frontend:
     build:
@@ -24,6 +27,14 @@ services:
     container_name: proyecto-gestion-frontend
     ports:
       - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
     depends_on:
       - backend
-    network_mode: "bridge"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge
