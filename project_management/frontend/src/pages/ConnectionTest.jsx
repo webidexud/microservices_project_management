@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { CheckCircle2, XCircle, Database, Server, Clock, Info } from "lucide-react"
+import { CheckCircle2, XCircle, Database, Server, Clock, Table } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -12,7 +11,7 @@ export default function ConnectionTest() {
       if (!response.ok) throw new Error("No se pudo conectar al backend")
       return response.json()
     },
-    refetchInterval: 5000, // Actualizar cada 5 segundos
+    refetchInterval: 5000,
   })
 
   return (
@@ -20,7 +19,7 @@ export default function ConnectionTest() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Test de Conexión</h1>
-        <p className="text-text-secondary mt-1">
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
           Verificación de conexión a la base de datos PostgreSQL
         </p>
       </div>
@@ -35,45 +34,45 @@ export default function ConnectionTest() {
         </CardHeader>
         <CardContent>
           {isLoading && (
-            <div className="flex items-center gap-3 text-warning">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-warning"></div>
+            <div className="flex items-center gap-3 text-amber-600">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
               <span className="text-lg">Verificando conexión...</span>
             </div>
           )}
 
           {error && (
-            <div className="flex items-center gap-3 text-error">
+            <div className="flex items-center gap-3 text-red-600">
               <XCircle className="h-8 w-8" />
               <div>
                 <p className="text-lg font-semibold">Error de Conexión</p>
-                <p className="text-sm text-text-secondary">{error.message}</p>
+                <p className="text-sm text-gray-600">{error.message}</p>
               </div>
             </div>
           )}
 
-          {connectionData && (
+          {connectionData?.database && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 {connectionData.database.success ? (
                   <>
-                    <CheckCircle2 className="h-8 w-8 text-success" />
+                    <CheckCircle2 className="h-8 w-8 text-green-600" />
                     <div>
-                      <p className="text-lg font-semibold text-success">
+                      <p className="text-lg font-semibold text-green-600">
                         Conexión Exitosa
                       </p>
-                      <p className="text-sm text-text-secondary">
+                      <p className="text-sm text-gray-600">
                         La base de datos está respondiendo correctamente
                       </p>
                     </div>
                   </>
                 ) : (
                   <>
-                    <XCircle className="h-8 w-8 text-error" />
+                    <XCircle className="h-8 w-8 text-red-600" />
                     <div>
-                      <p className="text-lg font-semibold text-error">
+                      <p className="text-lg font-semibold text-red-600">
                         Conexión Fallida
                       </p>
-                      <p className="text-sm text-text-secondary">
+                      <p className="text-sm text-gray-600">
                         {connectionData.database.error}
                       </p>
                     </div>
@@ -86,7 +85,7 @@ export default function ConnectionTest() {
       </Card>
 
       {/* Detalles de la Conexión */}
-      {connectionData?.database.success && (
+      {connectionData?.database?.success && (
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -97,19 +96,17 @@ export default function ConnectionTest() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-xs text-text-secondary uppercase mb-1">
+                <p className="text-xs text-gray-500 uppercase mb-1">
                   Base de Datos
                 </p>
                 <p className="font-medium">{connectionData.database.database}</p>
               </div>
               <div>
-                <p className="text-xs text-text-secondary uppercase mb-1">
-                  Host
-                </p>
+                <p className="text-xs text-gray-500 uppercase mb-1">Host</p>
                 <p className="font-medium">{connectionData.database.host}</p>
               </div>
               <div>
-                <p className="text-xs text-text-secondary uppercase mb-1">
+                <p className="text-xs text-gray-500 uppercase mb-1">
                   Versión PostgreSQL
                 </p>
                 <p className="text-sm font-mono">
@@ -128,7 +125,7 @@ export default function ConnectionTest() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-xs text-text-secondary uppercase mb-1">
+                <p className="text-xs text-gray-500 uppercase mb-1">
                   Timestamp Sistema
                 </p>
                 <p className="font-medium">
@@ -136,7 +133,7 @@ export default function ConnectionTest() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-text-secondary uppercase mb-1">
+                <p className="text-xs text-gray-500 uppercase mb-1">
                   Timestamp Base de Datos
                 </p>
                 <p className="font-medium">
@@ -144,7 +141,7 @@ export default function ConnectionTest() {
                 </p>
               </div>
               <div>
-                <Badge variant="success" className="mt-2">
+                <Badge className="mt-2 bg-green-600">
                   Sincronización correcta
                 </Badge>
               </div>
@@ -153,25 +150,35 @@ export default function ConnectionTest() {
         </div>
       )}
 
-      {/* Tablas de la Base de Datos */}
+      {/* LISTADO DE TABLAS */}
       {connectionData?.tables && connectionData.tables.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              Tablas en la Base de Datos ({connectionData.tables.length})
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Table className="h-5 w-5" />
+                Tablas en la Base de Datos
+              </div>
+              <Badge variant="secondary" className="text-lg px-4 py-1">
+                {connectionData.tables.length} tablas
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {connectionData.tables.map((table, index) => (
                 <div
                   key={index}
-                  className="p-3 border rounded-lg bg-neutral-50 dark:bg-neutral-900"
+                  className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <p className="font-medium text-sm">{table.tablename}</p>
-                  <p className="text-xs text-text-secondary mt-1">
-                    Tamaño: {table.size}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4 text-blue-600" />
+                      <p className="font-mono font-medium text-sm">{table.tablename}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Tamaño: <span className="font-semibold">{table.size}</span>
                   </p>
                 </div>
               ))}
@@ -184,7 +191,7 @@ export default function ConnectionTest() {
       <div className="flex justify-center">
         <button
           onClick={() => refetch()}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 transition-colors"
+          className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
         >
           Refrescar Conexión
         </button>

@@ -1,18 +1,4 @@
 services:
-  db:
-    image: postgres:16
-    container_name: db_siexud_new
-    environment:
-      POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
-      POSTGRES_USER: admin
-      POSTGRES_DB: nuevo_siexud
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-
   backend:
     build:
       context: ./backend
@@ -21,16 +7,15 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DB_HOST: db
+      # Conectar al contenedor de base de datos existente
+      DB_HOST: db_siexud_new  # ← Nombre del contenedor existente
       DB_PORT: 5432
       POSTGRES_DB: nuevo_siexud
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
       PORT: 8000
-    depends_on:
-      - db
-    networks:
-      - app-network
+    # Conectar a la red del contenedor db_siexud_new
+    network_mode: "bridge"
 
   frontend:
     build:
@@ -41,12 +26,4 @@ services:
       - "3000:80"
     depends_on:
       - backend
-    networks:
-      - app-network
-
-volumes:
-  postgres_data:
-
-networks:
-  app-network:
-    driver: bridge
+    network_mode: "bridge"
