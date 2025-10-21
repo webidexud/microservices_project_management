@@ -34,75 +34,26 @@ import {
   Pie,
   Cell,
 } from "recharts"
-
-// Datos mock - reemplazar con API real
-const mockMetrics = {
-  activeProjects: { value: 24, change: 12, trend: "up" },
-  totalValue: { value: 1234567890, change: 8, trend: "up" },
-  expiring: { value: 5, change: 0, trend: "neutral" },
-  entities: { value: 18, change: 2, trend: "up" },
-}
-
-const mockRecentProjects = [
-  {
-    id: 1,
-    name: "Modernización Sistema de Información",
-    entity: "Ministerio de Educación",
-    value: 250000000,
-    status: "En ejecución",
-    endDate: "2025-12-31",
-  },
-  {
-    id: 2,
-    name: "Capacitación Docente Virtual",
-    entity: "Secretaría de Educación",
-    value: 150000000,
-    status: "Por iniciar",
-    endDate: "2025-11-15",
-  },
-  {
-    id: 3,
-    name: "Estudio de Movilidad Urbana",
-    entity: "Alcaldía Mayor",
-    value: 180000000,
-    status: "En ejecución",
-    endDate: "2025-10-30",
-  },
-  {
-    id: 4,
-    name: "Evaluación Ambiental",
-    entity: "CAR Cundinamarca",
-    value: 95000000,
-    status: "Finalizado",
-    endDate: "2025-09-20",
-  },
-]
-
-const mockChartData = [
-  { month: "Ene", value: 850000000 },
-  { month: "Feb", value: 920000000 },
-  { month: "Mar", value: 1100000000 },
-  { month: "Abr", value: 1050000000 },
-  { month: "May", value: 1234567890 },
-]
-
-const mockProjectsByStatus = [
-  { name: "En ejecución", value: 12, color: "#0097A7" },
-  { name: "Por iniciar", value: 5, color: "#26C6DA" },
-  { name: "Finalizados", value: 7, color: "#43A047" },
-]
-
-const mockProjectsByType = [
-  { name: "Consultoría", count: 8 },
-  { name: "Capacitación", count: 6 },
-  { name: "Investigación", count: 5 },
-  { name: "Desarrollo", count: 5 },
-]
+import { dashboardApi } from "@/lib/api"
 
 export default function Dashboard() {
-  const { data: metrics, isLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ["dashboard-metrics"],
-    queryFn: async () => mockMetrics,
+    queryFn: dashboardApi.getMetrics,
+  })
+
+  const { data: charts, isLoading: chartsLoading } = useQuery({
+    queryKey: ["dashboard-charts"],
+    queryFn: dashboardApi.getCharts,
+  })
+
+  const { data: recentProjects, isLoading: projectsLoading } = useQuery({
+    queryKey: ["recent-projects"],
+    queryFn: async () => {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/projects/recent`)
+      if (!response.ok) throw new Error('Error al cargar proyectos recientes')
+      return response.json()
+    },
   })
 
   const getStatusColor = (status) => {
@@ -115,7 +66,7 @@ export default function Dashboard() {
     return colors[status] || "default"
   }
 
-  if (isLoading) {
+  if (metricsLoading || chartsLoading || projectsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -146,9 +97,9 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.activeProjects.value}</div>
+            <div className="text-2xl font-bold">{metrics?.activeProjects?.value || 0}</div>
             <p className="text-xs text-success mt-1">
-              +{metrics.activeProjects.change}% vs mes anterior
+              {metrics?.activeProjects?.change > 0 ? '+' : ''}{metrics?.activeProjects?.change || 0}% vs mes anterior
             </p>
           </CardContent>
         </Card>
@@ -162,10 +113,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(metrics.totalValue.value)}
+              {formatCurrency(metrics?.totalValue?.value || 0)}
             </div>
             <p className="text-xs text-success mt-1">
-              +{metrics.totalValue.change}% vs mes anterior
+              {metrics?.totalValue?.change > 0 ? '+' : ''}{metrics?.totalValue?.change || 0}% vs mes anterior
             </p>
           </CardContent>
         </Card>
@@ -178,7 +129,7 @@ export default function Dashboard() {
             <Clock className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.expiring.value}</div>
+            <div className="text-2xl font-bold">{metrics?.expiring?.value || 0}</div>
             <p className="text-xs text-text-secondary mt-1">
               Próximos 30 días
             </p>
@@ -193,9 +144,9 @@ export default function Dashboard() {
             <Building2 className="h-4 w-4 text-info" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.entities.value}</div>
+            <div className="text-2xl font-bold">{metrics?.entities?.value || 0}</div>
             <p className="text-xs text-success mt-1">
-              +{metrics.entities.change} nuevas
+              {metrics?.entities?.change > 0 ? '+' : ''}{metrics?.entities?.change || 0} nuevas
             </p>
           </CardContent>
         </Card>
@@ -209,27 +160,33 @@ export default function Dashboard() {
             <CardTitle>Evolución del Valor de Proyectos</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={mockChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #CFD8DC",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#0097A7"
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {charts?.monthlyEvolution?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={charts.monthlyEvolution}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #CFD8DC",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#0097A7"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-text-secondary">
+                No hay datos disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -239,27 +196,33 @@ export default function Dashboard() {
             <CardTitle>Proyectos por Estado</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={mockProjectsByStatus}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {mockProjectsByStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {charts?.projectsByStatus?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={charts.projectsByStatus}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {charts.projectsByStatus.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-text-secondary">
+                No hay datos disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -270,21 +233,27 @@ export default function Dashboard() {
           <CardTitle>Proyectos por Tipo</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mockProjectsByType}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "white",
-                  border: "1px solid #CFD8DC",
-                  borderRadius: "8px",
-                }}
-              />
-              <Bar dataKey="count" fill="#0097A7" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {charts?.projectsByType?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={charts.projectsByType}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #CFD8DC",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Bar dataKey="count" fill="#0097A7" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-text-secondary">
+              No hay datos disponibles
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -294,32 +263,38 @@ export default function Dashboard() {
           <CardTitle>Proyectos Recientes</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Proyecto</TableHead>
-                <TableHead>Entidad</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Fecha Fin</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockRecentProjects.map((project) => (
-                <TableRow key={project.id}>
-                  <TableCell className="font-medium">{project.name}</TableCell>
-                  <TableCell>{project.entity}</TableCell>
-                  <TableCell>{formatCurrency(project.value)}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusColor(project.status)}>
-                      {project.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDate(project.endDate)}</TableCell>
+          {recentProjects?.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Proyecto</TableHead>
+                  <TableHead>Entidad</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha Fin</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {recentProjects.map((project) => (
+                  <TableRow key={project.id}>
+                    <TableCell className="font-medium">{project.name}</TableCell>
+                    <TableCell>{project.entity}</TableCell>
+                    <TableCell>{formatCurrency(project.value)}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(project.status)}>
+                        {project.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDate(project.endDate)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-8 text-center text-text-secondary">
+              No hay proyectos recientes
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

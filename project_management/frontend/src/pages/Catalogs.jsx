@@ -49,59 +49,6 @@ const catalogTypes = [
   { id: "officials", name: "Funcionarios Ordenadores", icon: Users },
 ]
 
-// Mock data para entidades
-const mockEntities = [
-  {
-    id: 1,
-    name: "Ministerio de Educación Nacional",
-    nit: "899999061-1",
-    type: "Entidad Pública",
-    contact: "contacto@mineducacion.gov.co",
-    active: true,
-  },
-  {
-    id: 2,
-    name: "Secretaría de Educación Distrital",
-    nit: "899999034-2",
-    type: "Entidad Pública",
-    contact: "info@educacionbogota.edu.co",
-    active: true,
-  },
-  {
-    id: 3,
-    name: "Alcaldía Mayor de Bogotá",
-    nit: "899999094-6",
-    type: "Entidad Pública",
-    contact: "contacto@bogota.gov.co",
-    active: true,
-  },
-  {
-    id: 4,
-    name: "CAR Cundinamarca",
-    nit: "899999106-5",
-    type: "Entidad Pública",
-    contact: "info@car.gov.co",
-    active: false,
-  },
-]
-
-// Mock data para dependencias
-const mockDependencies = [
-  { id: 1, name: "Facultad de Ingeniería", code: "FI", active: true },
-  { id: 2, name: "Facultad de Educación", code: "FED", active: true },
-  { id: 3, name: "Facultad de Artes", code: "FA", active: true },
-  { id: 4, name: "Facultad de Ciencias", code: "FC", active: true },
-  { id: 5, name: "Facultad de Medio Ambiente", code: "FMA", active: false },
-]
-
-// Mock data para tipos de proyecto
-const mockProjectTypes = [
-  { id: 1, name: "Consultoría", description: "Servicios de consultoría profesional", active: true },
-  { id: 2, name: "Capacitación", description: "Programas de formación y capacitación", active: true },
-  { id: 3, name: "Investigación", description: "Proyectos de investigación aplicada", active: true },
-  { id: 4, name: "Desarrollo Tecnológico", description: "Desarrollo de soluciones tecnológicas", active: true },
-]
-
 export default function Catalogs() {
   const [activeCatalog, setActiveCatalog] = useState("entities")
   const [searchTerm, setSearchTerm] = useState("")
@@ -111,21 +58,34 @@ export default function Catalogs() {
   const [formData, setFormData] = useState({})
   const queryClient = useQueryClient()
 
-  // Simular query para el catálogo activo
   const { data: catalogData, isLoading } = useQuery({
     queryKey: ["catalog", activeCatalog],
-    queryFn: async () => {
-      // Mock data según el catálogo
-      switch (activeCatalog) {
-        case "entities":
-          return mockEntities
-        case "dependencies":
-          return mockDependencies
-        case "project-types":
-          return mockProjectTypes
-        default:
-          return []
-      }
+    queryFn: () => catalogsApi.get(activeCatalog),
+  })
+
+  const toggleMutation = useMutation({
+    mutationFn: (id) => catalogsApi.toggle(activeCatalog, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["catalog", activeCatalog])
+    },
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data) => catalogsApi.create(activeCatalog, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["catalog", activeCatalog])
+      setShowCreateDialog(false)
+      setFormData({})
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => catalogsApi.update(activeCatalog, id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["catalog", activeCatalog])
+      setShowEditDialog(false)
+      setSelectedItem(null)
+      setFormData({})
     },
   })
 
@@ -140,8 +100,7 @@ export default function Catalogs() {
   }
 
   const handleToggleActive = async (item) => {
-    // Aquí iría la lógica para habilitar/deshabilitar
-    console.log("Toggle active:", item)
+    toggleMutation.mutate(item.id)
   }
 
   const handleCreate = () => {
@@ -150,9 +109,11 @@ export default function Catalogs() {
   }
 
   const handleSave = async () => {
-    console.log("Saving:", formData)
-    setShowCreateDialog(false)
-    setShowEditDialog(false)
+    if (showEditDialog && selectedItem) {
+      updateMutation.mutate({ id: selectedItem.id, data: formData })
+    } else {
+      createMutation.mutate(formData)
+    }
   }
 
   const renderTableHeaders = () => {
@@ -178,6 +139,9 @@ export default function Catalogs() {
           </>
         )
       case "project-types":
+      case "financing-types":
+      case "execution-modalities":
+      case "contracting-modalities":
         return (
           <>
             <TableHead>Nombre</TableHead>
@@ -224,6 +188,7 @@ export default function Catalogs() {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleToggleActive(item)}
+                  disabled={toggleMutation.isPending}
                 >
                   {item.active ? (
                     <PowerOff className="h-4 w-4 text-danger" />
@@ -258,6 +223,7 @@ export default function Catalogs() {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleToggleActive(item)}
+                  disabled={toggleMutation.isPending}
                 >
                   {item.active ? (
                     <PowerOff className="h-4 w-4 text-danger" />
@@ -270,6 +236,9 @@ export default function Catalogs() {
           </>
         )
       case "project-types":
+      case "financing-types":
+      case "execution-modalities":
+      case "contracting-modalities":
         return (
           <>
             <TableCell className="font-medium">{item.name}</TableCell>
@@ -292,6 +261,7 @@ export default function Catalogs() {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleToggleActive(item)}
+                  disabled={toggleMutation.isPending}
                 >
                   {item.active ? (
                     <PowerOff className="h-4 w-4 text-danger" />
@@ -304,7 +274,39 @@ export default function Catalogs() {
           </>
         )
       default:
-        return null
+        return (
+          <>
+            <TableCell className="font-medium">{item.name}</TableCell>
+            <TableCell>
+              <Badge variant={item.active ? "success" : "default"}>
+                {item.active ? "Activo" : "Inactivo"}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEdit(item)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleToggleActive(item)}
+                  disabled={toggleMutation.isPending}
+                >
+                  {item.active ? (
+                    <PowerOff className="h-4 w-4 text-danger" />
+                  ) : (
+                    <Power className="h-4 w-4 text-success" />
+                  )}
+                </Button>
+              </div>
+            </TableCell>
+          </>
+        )
     }
   }
 
@@ -386,6 +388,9 @@ export default function Catalogs() {
           </div>
         )
       case "project-types":
+      case "financing-types":
+      case "execution-modalities":
+      case "contracting-modalities":
         return (
           <div className="space-y-4">
             <div>
@@ -411,7 +416,20 @@ export default function Catalogs() {
           </div>
         )
       default:
-        return null
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nombre</label>
+              <Input
+                value={formData.name || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="Nombre"
+              />
+            </div>
+          </div>
+        )
     }
   }
 
@@ -502,16 +520,28 @@ export default function Catalogs() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>{renderTableHeaders()}</TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData?.map((item) => (
-                <TableRow key={item.id}>{renderTableRow(item)}</TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {filteredData && filteredData.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>{renderTableHeaders()}</TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.map((item) => (
+                  <TableRow key={item.id}>{renderTableRow(item)}</TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-12 text-center text-text-secondary">
+              <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No hay registros disponibles</p>
+              <p className="text-sm mt-2">
+                {searchTerm 
+                  ? "No se encontraron registros con el término de búsqueda"
+                  : "Crea el primer registro para comenzar"}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -532,7 +562,12 @@ export default function Catalogs() {
             >
               Cancelar
             </Button>
-            <Button onClick={handleSave}>Guardar</Button>
+            <Button 
+              onClick={handleSave}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? "Guardando..." : "Guardar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -551,7 +586,12 @@ export default function Catalogs() {
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>Actualizar</Button>
+            <Button 
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Actualizando..." : "Actualizar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

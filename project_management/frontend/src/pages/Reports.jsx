@@ -29,34 +29,7 @@ import {
 } from "recharts"
 import { formatCurrency } from "@/lib/utils"
 
-const mockReportData = {
-  byEntity: [
-    { name: "Min. Educación", value: 450000000, projects: 8 },
-    { name: "Alcaldía Mayor", value: 380000000, projects: 6 },
-    { name: "Sec. Educación", value: 280000000, projects: 5 },
-    { name: "CAR", value: 190000000, projects: 3 },
-    { name: "Otros", value: 234567890, projects: 4 },
-  ],
-  byDependency: [
-    { name: "Ingeniería", value: 520000000, projects: 10 },
-    { name: "Educación", value: 380000000, projects: 7 },
-    { name: "Artes", value: 290000000, projects: 5 },
-    { name: "Ciencias", value: 344567890, projects: 4 },
-  ],
-  byStatus: [
-    { name: "En ejecución", value: 12, color: "#0097A7" },
-    { name: "Por iniciar", value: 5, color: "#26C6DA" },
-    { name: "Finalizados", value: 7, color: "#43A047" },
-    { name: "Suspendidos", value: 2, color: "#E53935" },
-  ],
-  byMonth: [
-    { month: "Ene", value: 850000000, projects: 15 },
-    { month: "Feb", value: 920000000, projects: 18 },
-    { month: "Mar", value: 1100000000, projects: 22 },
-    { month: "Abr", value: 1050000000, projects: 20 },
-    { month: "May", value: 1234567890, projects: 26 },
-  ],
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 export default function Reports() {
   const [reportType, setReportType] = useState("financial")
@@ -65,16 +38,37 @@ export default function Reports() {
   const [selectedEntity, setSelectedEntity] = useState("all")
 
   const { data: reportData, isLoading } = useQuery({
-    queryKey: ["reports", reportType],
-    queryFn: async () => mockReportData,
+    queryKey: ["reports", reportType, dateFrom, dateTo, selectedEntity],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        type: reportType,
+        ...(dateFrom && { dateFrom }),
+        ...(dateTo && { dateTo }),
+        ...(selectedEntity !== "all" && { entity: selectedEntity }),
+      })
+      const response = await fetch(`${API_BASE_URL}/reports?${params}`)
+      if (!response.ok) throw new Error('Error al cargar reportes')
+      return response.json()
+    },
+  })
+
+  const { data: entities } = useQuery({
+    queryKey: ["entities-list"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/entities`)
+      if (!response.ok) throw new Error('Error al cargar entidades')
+      return response.json()
+    },
   })
 
   const handleExportPDF = () => {
     console.log("Exportando a PDF...")
+    // Implementar exportación PDF
   }
 
   const handleExportExcel = () => {
     console.log("Exportando a Excel...")
+    // Implementar exportación Excel
   }
 
   if (isLoading) {
@@ -152,9 +146,11 @@ export default function Reports() {
                 onChange={(e) => setSelectedEntity(e.target.value)}
               >
                 <option value="all">Todas</option>
-                <option value="1">Ministerio de Educación</option>
-                <option value="2">Alcaldía Mayor</option>
-                <option value="3">Secretaría de Educación</option>
+                {entities?.map((entity) => (
+                  <option key={entity.id} value={entity.id}>
+                    {entity.name}
+                  </option>
+                ))}
               </Select>
             </div>
           </div>
@@ -168,7 +164,7 @@ export default function Reports() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">Total Proyectos</p>
-                <p className="text-2xl font-bold">26</p>
+                <p className="text-2xl font-bold">{reportData?.totalProjects || 0}</p>
               </div>
               <FileText className="h-8 w-8 text-primary" />
             </div>
@@ -180,7 +176,7 @@ export default function Reports() {
               <div>
                 <p className="text-sm text-text-secondary">Valor Total</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(1534567890)}
+                  {formatCurrency(reportData?.totalValue || 0)}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-success" />
@@ -192,7 +188,7 @@ export default function Reports() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">Entidades</p>
-                <p className="text-2xl font-bold">18</p>
+                <p className="text-2xl font-bold">{reportData?.totalEntities || 0}</p>
               </div>
               <PieChartIcon className="h-8 w-8 text-info" />
             </div>
@@ -206,7 +202,7 @@ export default function Reports() {
                   Promedio Proyecto
                 </p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(59021842)}
+                  {formatCurrency(reportData?.averageValue || 0)}
                 </p>
               </div>
               <BarChart3 className="h-8 w-8 text-warning" />
@@ -223,22 +219,28 @@ export default function Reports() {
             <CardTitle>Valor por Entidad</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={reportData.byEntity}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #CFD8DC",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Bar dataKey="value" fill="#0097A7" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {reportData?.byEntity?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={reportData.byEntity}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #CFD8DC",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Bar dataKey="value" fill="#0097A7" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-text-secondary">
+                No hay datos disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -248,25 +250,31 @@ export default function Reports() {
             <CardTitle>Distribución por Estado</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={reportData.byStatus}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {reportData.byStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {reportData?.byStatus?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={reportData.byStatus}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {reportData.byStatus.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-text-secondary">
+                No hay datos disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -277,27 +285,33 @@ export default function Reports() {
           <CardTitle>Evolución Mensual</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={reportData.byMonth}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip
-                formatter={(value) => formatCurrency(value)}
-                contentStyle={{
-                  backgroundColor: "white",
-                  border: "1px solid #CFD8DC",
-                  borderRadius: "8px",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#0097A7"
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {reportData?.byMonth?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={reportData.byMonth}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #CFD8DC",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#0097A7"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-text-secondary">
+              No hay datos disponibles
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -307,22 +321,28 @@ export default function Reports() {
           <CardTitle>Valor por Dependencia</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={reportData.byDependency} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={100} />
-              <Tooltip
-                formatter={(value) => formatCurrency(value)}
-                contentStyle={{
-                  backgroundColor: "white",
-                  border: "1px solid #CFD8DC",
-                  borderRadius: "8px",
-                }}
-              />
-              <Bar dataKey="value" fill="#26C6DA" radius={[0, 8, 8, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {reportData?.byDependency?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={reportData.byDependency} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={100} />
+                <Tooltip
+                  formatter={(value) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #CFD8DC",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Bar dataKey="value" fill="#26C6DA" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-text-secondary">
+              No hay datos disponibles
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,15 +1,68 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { 
+  entitiesApi, 
+  dependenciesApi, 
+  statesApi, 
+  projectTypesApi,
+  financingTypesApi,
+  executionModalitiesApi,
+  contractingModalitiesApi,
+  officialsApi,
+  projectsApi
+} from "@/lib/api"
 
 export default function CreateProject() {
   const navigate = useNavigate()
   const currentYear = new Date().getFullYear()
+  
+  // Queries para cargar datos de los catálogos
+  const { data: entities } = useQuery({
+    queryKey: ["entities-active"],
+    queryFn: entitiesApi.getActive,
+  })
+
+  const { data: dependencies } = useQuery({
+    queryKey: ["dependencies-active"],
+    queryFn: dependenciesApi.getActive,
+  })
+
+  const { data: projectStates } = useQuery({
+    queryKey: ["project-states-active"],
+    queryFn: statesApi.getActive,
+  })
+
+  const { data: projectTypes } = useQuery({
+    queryKey: ["project-types-active"],
+    queryFn: projectTypesApi.getActive,
+  })
+
+  const { data: financingTypes } = useQuery({
+    queryKey: ["financing-types-active"],
+    queryFn: financingTypesApi.getActive,
+  })
+
+  const { data: executionModalities } = useQuery({
+    queryKey: ["execution-modalities-active"],
+    queryFn: executionModalitiesApi.getActive,
+  })
+
+  const { data: contractingModalities } = useQuery({
+    queryKey: ["contracting-modalities-active"],
+    queryFn: contractingModalitiesApi.getActive,
+  })
+
+  const { data: officials } = useQuery({
+    queryKey: ["officials-active"],
+    queryFn: officialsApi.getActive,
+  })
   
   const [formData, setFormData] = useState({
     anio_proyecto: currentYear,
@@ -44,6 +97,7 @@ export default function CreateProject() {
   const [showSecondaryEmails, setShowSecondaryEmails] = useState(false)
   const [duration, setDuration] = useState({ years: 0, months: 0, days: 0 })
   const [showConfirm, setShowConfirm] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   // Formatear número con separadores de miles
   const formatNumber = (value) => {
@@ -142,20 +196,28 @@ export default function CreateProject() {
     setShowConfirm(true)
   }
 
-  const confirmarCreacion = () => {
-    const datos = {
-      ...formData,
-      valor_proyecto: cleanNumber(formData.valor_proyecto),
-      valor_beneficio: cleanNumber(formData.valor_beneficio),
-      aporte_universidad: cleanNumber(formData.aporte_universidad),
-      aporte_entidad: cleanNumber(formData.aporte_entidad),
-      correos_secundarios: correosSecundarios.filter(e => e.trim() !== ""),
-    }
+  const confirmarCreacion = async () => {
+    setIsCreating(true)
+    try {
+      const datos = {
+        ...formData,
+        valor_proyecto: cleanNumber(formData.valor_proyecto),
+        valor_beneficio: cleanNumber(formData.valor_beneficio),
+        aporte_universidad: cleanNumber(formData.aporte_universidad),
+        aporte_entidad: cleanNumber(formData.aporte_entidad),
+        correos_secundarios: correosSecundarios.filter(e => e.trim() !== ""),
+      }
 
-    console.log("Proyecto a crear:", datos)
-    setShowConfirm(false)
-    alert("¡Proyecto creado exitosamente!")
-    navigate('/projects')
+      await projectsApi.create(datos)
+      setShowConfirm(false)
+      alert("¡Proyecto creado exitosamente!")
+      navigate('/projects')
+    } catch (error) {
+      console.error("Error al crear proyecto:", error)
+      alert("Error al crear el proyecto: " + error.message)
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const agregarCorreo = () => {
@@ -315,9 +377,11 @@ export default function CreateProject() {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        <option value="1">Ministerio de Educación Nacional</option>
-                        <option value="2">SENA</option>
-                        <option value="3">Alcaldía Mayor de Bogotá</option>
+                        {entities?.map((entity) => (
+                          <option key={entity.id} value={entity.id}>
+                            {entity.name}
+                          </option>
+                        ))}
                       </Select>
                     </div>
 
@@ -332,10 +396,11 @@ export default function CreateProject() {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        <option value="1">Facultad de Ingeniería</option>
-                        <option value="2">Facultad de Ciencias y Educación</option>
-                        <option value="3">Facultad de Artes - ASAB</option>
-                        <option value="4">Facultad Tecnológica</option>
+                        {dependencies?.map((dep) => (
+                          <option key={dep.id} value={dep.id}>
+                            {dep.name}
+                          </option>
+                        ))}
                       </Select>
                     </div>
                   </div>
@@ -364,13 +429,11 @@ export default function CreateProject() {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        <option value="0">EN ESTUDIO</option>
-                        <option value="2">FORMULADO</option>
-                        <option value="4">PRE-APROBADO</option>
-                        <option value="6">APROBADO</option>
-                        <option value="8">SUSCRITO</option>
-                        <option value="12">SIN INICIAR</option>
-                        <option value="14">EN EJECUCIÓN</option>
+                        {projectStates?.map((state) => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
                       </Select>
                     </div>
 
@@ -385,10 +448,11 @@ export default function CreateProject() {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        <option value="1">Consultoría</option>
-                        <option value="2">Investigación Aplicada</option>
-                        <option value="3">Capacitación</option>
-                        <option value="4">Desarrollo Tecnológico</option>
+                        {projectTypes?.map((type) => (
+                          <option key={type.id} value={type.id}>
+                            {type.name}
+                          </option>
+                        ))}
                       </Select>
                     </div>
 
@@ -403,9 +467,11 @@ export default function CreateProject() {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        <option value="1">Recursos Propios</option>
-                        <option value="2">Recursos Externos</option>
-                        <option value="3">Cofinanciación</option>
+                        {financingTypes?.map((type) => (
+                          <option key={type.id} value={type.id}>
+                            {type.name}
+                          </option>
+                        ))}
                       </Select>
                     </div>
                   </div>
@@ -422,9 +488,11 @@ export default function CreateProject() {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        <option value="1">Directa</option>
-                        <option value="2">Indirecta</option>
-                        <option value="3">Mixta</option>
+                        {executionModalities?.map((mod) => (
+                          <option key={mod.id} value={mod.id}>
+                            {mod.name}
+                          </option>
+                        ))}
                       </Select>
                     </div>
 
@@ -438,9 +506,11 @@ export default function CreateProject() {
                         onChange={handleInputChange}
                       >
                         <option value="">Seleccione...</option>
-                        <option value="1">Licitación Pública</option>
-                        <option value="2">Selección Abreviada</option>
-                        <option value="3">Contratación Directa</option>
+                        {contractingModalities?.map((mod) => (
+                          <option key={mod.id} value={mod.id}>
+                            {mod.name}
+                          </option>
+                        ))}
                       </Select>
                     </div>
                   </div>
@@ -616,8 +686,11 @@ export default function CreateProject() {
                       required
                     >
                       <option value="">Seleccione...</option>
-                      <option value="1">Dr. Juan Carlos Pérez - Rector</option>
-                      <option value="2">Dra. María Elena García - Vicerrectora</option>
+                      {officials?.map((official) => (
+                        <option key={official.id} value={official.id}>
+                          {official.name} - {official.position}
+                        </option>
+                      ))}
                     </Select>
                   </div>
                 </CardContent>
@@ -993,12 +1066,13 @@ export default function CreateProject() {
               type="button"
               variant="outline"
               onClick={() => setShowConfirm(false)}
+              disabled={isCreating}
             >
               Cancelar
             </Button>
-            <Button onClick={confirmarCreacion}>
+            <Button onClick={confirmarCreacion} disabled={isCreating}>
               <Save className="h-4 w-4 mr-2" />
-              Sí, Crear Proyecto
+              {isCreating ? "Creando..." : "Sí, Crear Proyecto"}
             </Button>
           </DialogFooter>
         </DialogContent>

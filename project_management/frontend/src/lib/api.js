@@ -50,3 +50,67 @@ export const dashboardApi = {
   getMetrics: () => fetch(`${API_BASE_URL}/dashboard/metrics`).then(handleResponse),
   getCharts: () => fetch(`${API_BASE_URL}/dashboard/charts`).then(handleResponse),
 }
+
+// Reportes
+export const reportsApi = {
+  get: (params) => {
+    const queryString = new URLSearchParams(params).toString()
+    return fetch(`${API_BASE_URL}/reports?${queryString}`).then(handleResponse)
+  },
+  exportPDF: (params) => {
+    const queryString = new URLSearchParams(params).toString()
+    return fetch(`${API_BASE_URL}/reports/pdf?${queryString}`).then(response => response.blob())
+  },
+  exportExcel: (params) => {
+    const queryString = new URLSearchParams(params).toString()
+    return fetch(`${API_BASE_URL}/reports/excel?${queryString}`).then(response => response.blob())
+  },
+}
+
+// Entidades (para selectores)
+export const entitiesApi = {
+  getAll: () => fetch(`${API_BASE_URL}/entities`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/entities?active=true`).then(handleResponse),
+}
+
+// Dependencias (para selectores)
+export const dependenciesApi = {
+  getAll: () => fetch(`${API_BASE_URL}/dependencies`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/dependencies?active=true`).then(handleResponse),
+}
+
+// Estados (para selectores)
+export const statesApi = {
+  getAll: () => fetch(`${API_BASE_URL}/project-states`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/project-states?active=true`).then(handleResponse),
+}
+
+// Tipos de proyecto (para selectores)
+export const projectTypesApi = {
+  getAll: () => fetch(`${API_BASE_URL}/project-types`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/project-types?active=true`).then(handleResponse),
+}
+
+// Tipos de financiación (para selectores)
+export const financingTypesApi = {
+  getAll: () => fetch(`${API_BASE_URL}/financing-types`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/financing-types?active=true`).then(handleResponse),
+}
+
+// Modalidades de ejecución (para selectores)
+export const executionModalitiesApi = {
+  getAll: () => fetch(`${API_BASE_URL}/execution-modalities`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/execution-modalities?active=true`).then(handleResponse),
+}
+
+// Modalidades de contratación (para selectores)
+export const contractingModalitiesApi = {
+  getAll: () => fetch(`${API_BASE_URL}/contracting-modalities`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/contracting-modalities?active=true`).then(handleResponse),
+}
+
+// Funcionarios ordenadores (para selectores)
+export const officialsApi = {
+  getAll: () => fetch(`${API_BASE_URL}/officials`).then(handleResponse),
+  getActive: () => fetch(`${API_BASE_URL}/officials?active=true`).then(handleResponse),
+}

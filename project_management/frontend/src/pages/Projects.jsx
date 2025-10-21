@@ -36,49 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
-
-// Mock data
-const mockProjects = [
-  {
-    id: 1,
-    code: "PRY-2025-001",
-    name: "Modernización Sistema de Información",
-    entity: "Ministerio de Educación",
-    dependency: "Facultad de Ingeniería",
-    type: "Consultoría",
-    value: 250000000,
-    status: "En ejecución",
-    startDate: "2025-01-15",
-    endDate: "2025-12-31",
-    progress: 35,
-  },
-  {
-    id: 2,
-    code: "PRY-2025-002",
-    name: "Capacitación Docente Virtual",
-    entity: "Secretaría de Educación",
-    dependency: "Facultad de Educación",
-    type: "Capacitación",
-    value: 150000000,
-    status: "Por iniciar",
-    startDate: "2025-02-01",
-    endDate: "2025-11-15",
-    progress: 0,
-  },
-  {
-    id: 3,
-    code: "PRY-2024-089",
-    name: "Estudio de Movilidad Urbana",
-    entity: "Alcaldía Mayor",
-    dependency: "Facultad de Artes",
-    type: "Investigación",
-    value: 180000000,
-    status: "En ejecución",
-    startDate: "2024-08-10",
-    endDate: "2025-10-30",
-    progress: 65,
-  },
-]
+import { projectsApi } from "@/lib/api"
 
 export default function Projects() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -89,7 +47,7 @@ export default function Projects() {
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
-    queryFn: async () => mockProjects,
+    queryFn: projectsApi.getAll,
   })
 
   const filteredProjects = projects?.filter((project) => {
@@ -203,7 +161,7 @@ export default function Projects() {
                 <p className="text-2xl font-bold">
                   {
                     projects?.filter((p) => p.status === "En ejecución")
-                      .length
+                      .length || 0
                   }
                 </p>
               </div>
@@ -217,7 +175,7 @@ export default function Projects() {
               <div>
                 <p className="text-sm text-text-secondary">Por Iniciar</p>
                 <p className="text-2xl font-bold">
-                  {projects?.filter((p) => p.status === "Por iniciar").length}
+                  {projects?.filter((p) => p.status === "Por iniciar").length || 0}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-warning" />
@@ -231,7 +189,7 @@ export default function Projects() {
                 <p className="text-sm text-text-secondary">Valor Total</p>
                 <p className="text-xl font-bold">
                   {formatCurrency(
-                    projects?.reduce((sum, p) => sum + p.value, 0) || 0
+                    projects?.reduce((sum, p) => sum + (p.value || 0), 0) || 0
                   )}
                 </p>
               </div>
@@ -249,59 +207,71 @@ export default function Projects() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Entidad</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Fecha Fin</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProjects?.map((project) => (
-                <TableRow key={project.id}>
-                  <TableCell className="font-medium">{project.code}</TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{project.name}</p>
-                      <p className="text-sm text-text-secondary">
-                        {project.type}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{project.entity}</TableCell>
-                  <TableCell>{formatCurrency(project.value)}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusColor(project.status)}>
-                      {project.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDate(project.endDate)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewProject(project)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Trash2 className="h-4 w-4 text-danger" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {filteredProjects && filteredProjects.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Entidad</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha Fin</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredProjects.map((project) => (
+                  <TableRow key={project.id}>
+                    <TableCell className="font-medium">{project.code}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{project.name}</p>
+                        <p className="text-sm text-text-secondary">
+                          {project.type}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{project.entity}</TableCell>
+                    <TableCell>{formatCurrency(project.value)}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(project.status)}>
+                        {project.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDate(project.endDate)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewProject(project)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="h-4 w-4 text-danger" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-12 text-center text-text-secondary">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No hay proyectos disponibles</p>
+              <p className="text-sm mt-2">
+                {searchTerm || statusFilter !== "all" 
+                  ? "No se encontraron proyectos con los filtros aplicados"
+                  : "Crea tu primer proyecto para comenzar"}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -367,17 +337,19 @@ export default function Projects() {
                     {formatCurrency(selectedProject.value)}
                   </p>
                 </div>
-                <div className="col-span-2">
-                  <p className="text-sm font-medium text-text-secondary mb-2">
-                    Progreso: {selectedProject.progress}%
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="bg-primary h-2.5 rounded-full"
-                      style={{ width: `${selectedProject.progress}%` }}
-                    ></div>
+                {selectedProject.progress !== undefined && (
+                  <div className="col-span-2">
+                    <p className="text-sm font-medium text-text-secondary mb-2">
+                      Progreso: {selectedProject.progress}%
+                    </p>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-primary h-2.5 rounded-full"
+                        style={{ width: `${selectedProject.progress}%` }}
+                      ></div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
