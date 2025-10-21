@@ -6,18 +6,15 @@ services:
     container_name: proyecto-gestion-backend
     ports:
       - "8000:8000"
-    environment:
-      DB_HOST: db_siexud_new
-      DB_PORT: 5432
-      POSTGRES_DB: nuevo_siexud
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
-      PORT: 8000
-      NODE_ENV: production
+    env_file:
+      - ./backend/.env
+    # Si PostgreSQL está en TU MÁQUINA (localhost), usa esto:
     extra_hosts:
-      - "db_siexud_new:host-gateway"  # Esto permite la conexión al PostgreSQL externo
+      - "host.docker.internal:host-gateway"
+    # Si está en OTRA máquina, borra extra_hosts y pon la IP en .env
     networks:
       - app_network
+      - docker-wordpress_mynet
     restart: unless-stopped
 
   frontend:
@@ -33,8 +30,11 @@ services:
       - backend
     networks:
       - app_network
+      - docker-wordpress_mynet
     restart: unless-stopped
 
 networks:
   app_network:
+    driver: bridge
+  docker-wordpress_mynet:
     driver: bridge
