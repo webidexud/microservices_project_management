@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: proyecto-gestion-backend
+    container_name: project_management
     ports:
       - "8000:8000"
     env_file:
