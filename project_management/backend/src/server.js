@@ -1850,13 +1850,13 @@ app.put('/api/projects/:id', async (req, res) => {
       WHERE p.project_id = $1`,
       [id]
     );
-    
+
     console.log(`🎉 Proyecto ${id} actualizado exitosamente`);
-    
+
     res.json({
       success: true,
       message: 'Proyecto actualizado exitosamente',
-      project: fullProjectResult.rows[0]
+      project: fullProjectResult.rows[0]  // ← DEBE SER fullProjectResult, no fullProject
     });
     
   } catch (error) {

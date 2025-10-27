@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { rupCodesApi } from "@/lib/api"
 import RupCodeSelector from "@/components/RupCodeSelector"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -23,6 +23,7 @@ import {
 
 export default function CreateProject() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const currentYear = new Date().getFullYear()
   
   // Queries para cargar datos de los catálogos
@@ -217,13 +218,28 @@ const confirmarCreacion = async () => {
     }
 
     // Crear el proyecto
-    const nuevoProyecto = await projectsApi.create(datos)
+    const respuesta = await projectsApi.create(datos)
     
-    // ✅ AGREGAR: Asignar códigos RUP si hay seleccionados
-    if (selectedRupCodes.length > 0 && nuevoProyecto) {
+    // ✅ DEBUG: Agregar console.log para ver qué devuelve el backend
+    console.log('📦 Respuesta del backend:', respuesta)
+    
+    // ✅ CORRECCIÓN: Extraer el proyecto de la respuesta
+    const nuevoProyecto = respuesta.project
+    
+    console.log('🔍 Proyecto creado:', nuevoProyecto)
+    console.log('📋 Internal number:', nuevoProyecto?.internal_number)
+    
+    // ✅ ASIGNAR códigos RUP si hay seleccionados
+    if (selectedRupCodes.length > 0 && nuevoProyecto?.internal_number) {
+      console.log('🏷️ Asignando códigos RUP:', {
+        year: formData.anio_proyecto,
+        number: nuevoProyecto.internal_number,
+        codes: selectedRupCodes
+      })
+      
       await rupCodesApi.assignToProject(
         formData.anio_proyecto,
-        nuevoProyecto.internal_project_number,
+        nuevoProyecto.internal_number,  // ← CORRECTO
         selectedRupCodes
       )
     }

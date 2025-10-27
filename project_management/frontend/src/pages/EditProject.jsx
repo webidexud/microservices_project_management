@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { rupCodesApi } from "@/lib/api"
 import RupCodeSelector from "@/components/RupCodeSelector"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
   Save,
@@ -36,6 +36,7 @@ import {
 export default function EditProject() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   // Cargar datos del proyecto
   const { data: project, isLoading: loadingProject } = useQuery({
