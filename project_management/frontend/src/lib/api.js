@@ -8,6 +8,44 @@ async function handleResponse(response) {
   return response.json()
 }
 
+// Códigos RUP
+export const rupCodesApi = {
+  // Obtener todos los códigos RUP activos
+  getAll: async () => {
+    const response = await fetch(`${API_BASE_URL}/rup-codes`)
+    return handleResponse(response)
+  },
+
+  // Obtener códigos RUP asignados a un proyecto
+  getByProject: async (projectYear, projectNumber) => {
+    const response = await fetch(
+      `${API_BASE_URL}/projects/${projectYear}/${projectNumber}/rup-codes`
+    )
+    return handleResponse(response)
+  },
+
+  // Asignar códigos RUP a un proyecto
+  assignToProject: async (projectYear, projectNumber, rupCodes) => {
+    const response = await fetch(
+      `${API_BASE_URL}/projects/${projectYear}/${projectNumber}/rup-codes`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rup_codes: rupCodes }),
+      }
+    )
+    return handleResponse(response)
+  },
+
+  // Eliminar un código RUP de un proyecto
+  remove: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/project-rup-codes/${id}`, {
+      method: 'DELETE',
+    })
+    return handleResponse(response)
+  },
+}
+
 // Proyectos
 export const projectsApi = {
   getAll: () => fetch(`${API_BASE_URL}/projects`).then(handleResponse),

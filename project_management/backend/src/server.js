@@ -1953,6 +1953,167 @@ app.delete('/api/projects/:id', async (req, res) => {
   }
 });
 
+// ========== CÓDIGOS RUP ==========
+
+// Obtener todos los códigos RUP activos
+app.get('/api/rup-codes', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT 
+        rup_code_id as id,
+        rup_code as code,
+        code_description as description,
+        main_category,
+        subcategory,
+        hierarchy_level,
+        parent_code,
+        keywords,
+        is_active as active
+      FROM rup_codes
+      WHERE is_active = true
+      ORDER BY rup_code`
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener códigos RUP:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener códigos RUP asignados a un proyecto
+app.get('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) => {
+  try {
+    const { projectYear, projectNumber } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        prc.project_rup_code_id as id,
+        prc.rup_code_id,
+        rc.rup_code as code,
+        rc.code_description as description,
+        rc.main_category,
+        rc.subcategory,
+        prc.is_main_code,
+        prc.participation_percentage,
+        prc.observations,
+        prc.assignment_date
+      FROM project_rup_codes prc
+      INNER JOIN rup_codes rc ON prc.rup_code_id = rc.rup_code_id
+      WHERE prc.project_year = $1 
+        AND prc.internal_project_number = $2
+        AND prc.is_active = true
+      ORDER BY prc.is_main_code DESC, rc.rup_code`,
+      [projectYear, projectNumber]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener códigos RUP del proyecto:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Asignar códigos RUP a un proyecto (usado al crear/editar)
+app.post('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) => {
+  try {
+    const { projectYear, projectNumber } = req.params;
+    const { rup_codes } = req.body; // Array de { rup_code_id, is_main_code, participation_percentage, observations }
+    
+    if (!rup_codes || !Array.isArray(rup_codes)) {
+      return res.status(400).json({ error: 'Se requiere un array de códigos RUP' });
+    }
+
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Primero, desactivar todos los códigos RUP existentes del proyecto
+      await client.query(
+        `UPDATE project_rup_codes 
+         SET is_active = false 
+         WHERE project_year = $1 AND internal_project_number = $2`,
+        [projectYear, projectNumber]
+      );
+      
+      // Luego, insertar los nuevos códigos RUP
+      const insertPromises = rup_codes.map(rupCode => {
+        return client.query(
+          `INSERT INTO project_rup_codes (
+            project_year,
+            internal_project_number,
+            rup_code_id,
+            is_main_code,
+            participation_percentage,
+            observations,
+            assignment_date,
+            assigned_by_user_id,
+            is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, 1, true)`,
+          [
+            projectYear,
+            projectNumber,
+            rupCode.rup_code_id,
+            rupCode.is_main_code || false,
+            rupCode.participation_percentage || null,
+            rupCode.observations || null
+          ]
+        );
+      });
+      
+      await Promise.all(insertPromises);
+      await client.query('COMMIT');
+      
+      res.json({ 
+        success: true, 
+        message: 'Códigos RUP asignados correctamente',
+        count: rup_codes.length 
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('Error al asignar códigos RUP:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Eliminar un código RUP específico de un proyecto
+app.delete('/api/project-rup-codes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `UPDATE project_rup_codes 
+       SET is_active = false 
+       WHERE project_rup_code_id = $1 
+       RETURNING project_rup_code_id`,
+      [id]
+    );
+    
+    client.release();
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Código RUP no encontrado' });
+    }
+    
+    res.json({ success: true, message: 'Código RUP eliminado' });
+  } catch (error) {
+    console.error('Error al eliminar código RUP:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // INICIAR SERVIDOR
 // ============================================

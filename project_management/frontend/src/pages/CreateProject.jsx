@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
+import { useQuery } from "@tanstack/react-query"
+import { rupCodesApi } from "@/lib/api"
+import RupCodeSelector from "@/components/RupCodeSelector"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { 
   entitiesApi, 
@@ -63,6 +65,11 @@ export default function CreateProject() {
     queryKey: ["officials-active"],
     queryFn: officialsApi.getActive,
   })
+
+  const { data: rupCodes } = useQuery({
+    queryKey: ["rup-codes"],
+    queryFn: () => rupCodesApi.getAll(),
+  })
   
   const [formData, setFormData] = useState({
     anio_proyecto: currentYear,
@@ -94,6 +101,7 @@ export default function CreateProject() {
   })
 
   const [correosSecundarios, setCorreosSecundarios] = useState([])
+  const [selectedRupCodes, setSelectedRupCodes] = useState([])
   const [showSecondaryEmails, setShowSecondaryEmails] = useState(false)
   const [duration, setDuration] = useState({ years: 0, months: 0, days: 0 })
   const [showConfirm, setShowConfirm] = useState(false)
@@ -196,29 +204,44 @@ export default function CreateProject() {
     setShowConfirm(true)
   }
 
-  const confirmarCreacion = async () => {
-    setIsCreating(true)
-    try {
-      const datos = {
-        ...formData,
-        valor_proyecto: cleanNumber(formData.valor_proyecto),
-        valor_beneficio: cleanNumber(formData.valor_beneficio),
-        aporte_universidad: cleanNumber(formData.aporte_universidad),
-        aporte_entidad: cleanNumber(formData.aporte_entidad),
-        correos_secundarios: correosSecundarios.filter(e => e.trim() !== ""),
-      }
-
-      await projectsApi.create(datos)
-      setShowConfirm(false)
-      alert("¡Proyecto creado exitosamente!")
-      navigate('/projects')
-    } catch (error) {
-      console.error("Error al crear proyecto:", error)
-      alert("Error al crear el proyecto: " + error.message)
-    } finally {
-      setIsCreating(false)
+const confirmarCreacion = async () => {
+  setIsCreating(true)
+  try {
+    const datos = {
+      ...formData,
+      valor_proyecto: cleanNumber(formData.valor_proyecto),
+      valor_beneficio: cleanNumber(formData.valor_beneficio),
+      aporte_universidad: cleanNumber(formData.aporte_universidad),
+      aporte_entidad: cleanNumber(formData.aporte_entidad),
+      correos_secundarios: correosSecundarios.filter((e) => e.trim() !== ""),
     }
+
+    // Crear el proyecto
+    const nuevoProyecto = await projectsApi.create(datos)
+    
+    // ✅ AGREGAR: Asignar códigos RUP si hay seleccionados
+    if (selectedRupCodes.length > 0 && nuevoProyecto) {
+      await rupCodesApi.assignToProject(
+        formData.anio_proyecto,
+        nuevoProyecto.internal_project_number,
+        selectedRupCodes
+      )
+    }
+
+    // Invalidar caché
+    queryClient.invalidateQueries({ queryKey: ["projects"] })
+    queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] })
+
+    setShowConfirm(false)
+    alert("¡Proyecto creado exitosamente!")
+    navigate("/projects")
+  } catch (error) {
+    console.error("Error al crear proyecto:", error)
+    alert("Error al crear el proyecto: " + error.message)
+  } finally {
+    setIsCreating(false)
   }
+}
 
   const agregarCorreo = () => {
     setCorreosSecundarios([...correosSecundarios, ""])
@@ -693,6 +716,29 @@ export default function CreateProject() {
                       ))}
                     </Select>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* CÓDIGOS RUP */}
+              <Card>
+                <CardContent className="p-6 space-y-5">
+                  <div className="flex items-center gap-3 pb-3 border-b">
+                    <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
+                      🏷️
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold">Códigos RUP</h2>
+                      <p className="text-sm text-text-secondary">
+                        Clasificación según el Registro Único de Proponentes (opcional)
+                      </p>
+                    </div>
+                  </div>
+
+                  <RupCodeSelector
+                    allRupCodes={rupCodes || []}
+                    selectedRupCodes={selectedRupCodes}
+                    onSelectionChange={setSelectedRupCodes}
+                  />
                 </CardContent>
               </Card>
 

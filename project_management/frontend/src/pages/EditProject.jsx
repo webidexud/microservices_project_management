@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { rupCodesApi } from "@/lib/api"
+import RupCodeSelector from "@/components/RupCodeSelector"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -81,7 +83,26 @@ export default function EditProject() {
     queryKey: ["officials"],
     queryFn: () => officialsApi.getActive(),
   })
+// Cargar todos los códigos RUP disponibles
+const { data: rupCodes } = useQuery({
+  queryKey: ["rup-codes"],
+  queryFn: () => rupCodesApi.getAll(),
+})
 
+// Cargar códigos RUP ya asignados al proyecto
+const { data: projectRupCodes } = useQuery({
+  queryKey: ["project-rup-codes", id],
+  queryFn: () => {
+    if (project) {
+      return rupCodesApi.getByProject(
+        project.project_year,
+        project.internal_project_number
+      )
+    }
+    return Promise.resolve([])
+  },
+  enabled: !!project,
+})
   const [formData, setFormData] = useState({
     anio_proyecto: new Date().getFullYear(),
     numero_proyecto_externo: "",
@@ -115,6 +136,7 @@ export default function EditProject() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [duration, setDuration] = useState({ years: 0, months: 0, days: 0 })
+  const [selectedRupCodes, setSelectedRupCodes] = useState([])
 
   // Formatear número con separadores de miles
   const formatNumber = (value) => {
@@ -193,6 +215,23 @@ export default function EditProject() {
     }
   }, [project])
 
+  // Cargar códigos RUP del proyecto
+useEffect(() => {
+  if (projectRupCodes) {
+    const formattedRupCodes = projectRupCodes.map((code) => ({
+      rup_code_id: code.rup_code_id,
+      code: code.code,
+      description: code.description,
+      main_category: code.main_category,
+      subcategory: code.subcategory,
+      is_main_code: code.is_main_code,
+      participation_percentage: code.participation_percentage,
+      observations: code.observations || "",
+    }))
+    setSelectedRupCodes(formattedRupCodes)
+  }
+}, [projectRupCodes])
+
   // Auto-calcular beneficio institucional
   useEffect(() => {
     const valor = cleanNumber(formData.valor_proyecto)
@@ -270,29 +309,45 @@ export default function EditProject() {
     setShowConfirm(true)
   }
 
-  const confirmarActualizacion = async () => {
-    setIsUpdating(true)
-    try {
-      const datos = {
-        ...formData,
-        valor_proyecto: cleanNumber(formData.valor_proyecto),
-        valor_beneficio: cleanNumber(formData.valor_beneficio),
-        aporte_universidad: cleanNumber(formData.aporte_universidad),
-        aporte_entidad: cleanNumber(formData.aporte_entidad),
-        correos_secundarios: correosSecundarios.filter((e) => e.trim() !== ""),
-      }
-
-      await projectsApi.update(id, datos)
-      setShowConfirm(false)
-      alert("¡Proyecto actualizado exitosamente!")
-      navigate("/projects")
-    } catch (error) {
-      console.error("Error al actualizar proyecto:", error)
-      alert("Error al actualizar el proyecto: " + error.message)
-    } finally {
-      setIsUpdating(false)
+const confirmarActualizacion = async () => {
+  setIsUpdating(true)
+  try {
+    const datos = {
+      ...formData,
+      valor_proyecto: cleanNumber(formData.valor_proyecto),
+      valor_beneficio: cleanNumber(formData.valor_beneficio),
+      aporte_universidad: cleanNumber(formData.aporte_universidad),
+      aporte_entidad: cleanNumber(formData.aporte_entidad),
+      correos_secundarios: correosSecundarios.filter((e) => e.trim() !== ""),
     }
+
+    // Actualizar el proyecto
+    await projectsApi.update(id, datos)
+
+    // ✅ AGREGAR: Actualizar códigos RUP
+    if (project) {
+      await rupCodesApi.assignToProject(
+        project.project_year,
+        project.internal_project_number,
+        selectedRupCodes
+      )
+    }
+
+    // Invalidar caché
+    queryClient.invalidateQueries({ queryKey: ["projects"] })
+    queryClient.invalidateQueries({ queryKey: ["project", id] })
+    queryClient.invalidateQueries({ queryKey: ["project-rup-codes", id] })
+
+    setShowConfirm(false)
+    alert("¡Proyecto actualizado exitosamente!")
+    navigate("/projects")
+  } catch (error) {
+    console.error("Error al actualizar proyecto:", error)
+    alert("Error al actualizar el proyecto: " + error.message)
+  } finally {
+    setIsUpdating(false)
   }
+}
 
   const agregarCorreo = () => {
     setCorreosSecundarios([...correosSecundarios, ""])
@@ -892,6 +947,29 @@ export default function EditProject() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* CÓDIGOS RUP */}
+                <Card>
+                <CardContent className="p-6 space-y-5">
+                    <div className="flex items-center gap-3 pb-3 border-b">
+                    <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
+                        🏷️
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-semibold">Códigos RUP</h2>
+                        <p className="text-sm text-text-secondary">
+                        Clasificación según el Registro Único de Proponentes (opcional)
+                        </p>
+                    </div>
+                    </div>
+
+                    <RupCodeSelector
+                    allRupCodes={rupCodes || []}
+                    selectedRupCodes={selectedRupCodes}
+                    onSelectionChange={setSelectedRupCodes}
+                    />
+                </CardContent>
+                </Card>
 
               {/* DOCUMENTACIÓN */}
               <Card>
