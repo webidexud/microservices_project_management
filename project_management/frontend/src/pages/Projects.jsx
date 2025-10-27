@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query" // ✅ FALTABA useMutation y useQueryClient
 import { useNavigate } from "react-router-dom"
 import {
   Plus,
@@ -43,11 +43,29 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [selectedProject, setSelectedProject] = useState(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState(null)
+  
   const navigate = useNavigate()
+  const queryClient = useQueryClient() // ✅ Moverlo después de los estados
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: projectsApi.getAll,
+  })
+
+  // ✅ Mutación para eliminar
+  const deleteMutation = useMutation({
+    mutationFn: (id) => projectsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+      setShowDeleteDialog(false)
+      setProjectToDelete(null)
+      alert("Proyecto deshabilitado exitosamente")
+    },
+    onError: (error) => {
+      alert("Error al deshabilitar el proyecto: " + error.message)
+    },
   })
 
   const filteredProjects = projects?.filter((project) => {
@@ -75,6 +93,22 @@ export default function Projects() {
   const handleViewProject = (project) => {
     setSelectedProject(project)
     setShowDetailDialog(true)
+  }
+
+  const handleEditProject = (project) => {
+    navigate(`/projects/edit/${project.id}`)
+  }
+
+  const handleDeleteProject = (project) => {
+    setProjectToDelete(project)
+    setShowDeleteDialog(true)
+  }
+
+  // ✅ FALTABA esta función
+  const confirmDelete = () => {
+    if (projectToDelete) {
+      deleteMutation.mutate(projectToDelete.id)
+    }
   }
 
   if (isLoading) {
@@ -239,7 +273,7 @@ export default function Projects() {
                         {project.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatDate(project.endDate)}</TableCell>
+                    <TableCell>{formatDate(project.end_date)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -249,10 +283,20 @@ export default function Projects() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        {/* ✅ AGREGAR onClick */}
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleEditProject(project)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        {/* ✅ AGREGAR onClick */}
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDeleteProject(project)}
+                        >
                           <Trash2 className="h-4 w-4 text-danger" />
                         </Button>
                       </div>
@@ -297,7 +341,7 @@ export default function Projects() {
                   <p className="text-sm font-medium text-text-secondary">
                     Dependencia
                   </p>
-                  <p className="text-base">{selectedProject.dependency}</p>
+                  <p className="text-base">{selectedProject.department}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-text-secondary">
@@ -318,7 +362,7 @@ export default function Projects() {
                     Fecha Inicio
                   </p>
                   <p className="text-base">
-                    {formatDate(selectedProject.startDate)}
+                    {formatDate(selectedProject.start_date)}
                   </p>
                 </div>
                 <div>
@@ -326,7 +370,7 @@ export default function Projects() {
                     Fecha Fin
                   </p>
                   <p className="text-base">
-                    {formatDate(selectedProject.endDate)}
+                    {formatDate(selectedProject.end_date)}
                   </p>
                 </div>
                 <div className="col-span-2">
@@ -337,19 +381,6 @@ export default function Projects() {
                     {formatCurrency(selectedProject.value)}
                   </p>
                 </div>
-                {selectedProject.progress !== undefined && (
-                  <div className="col-span-2">
-                    <p className="text-sm font-medium text-text-secondary mb-2">
-                      Progreso: {selectedProject.progress}%
-                    </p>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-primary h-2.5 rounded-full"
-                        style={{ width: `${selectedProject.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -360,9 +391,61 @@ export default function Projects() {
             >
               Cerrar
             </Button>
-            <Button>
+            <Button onClick={() => handleEditProject(selectedProject)}>
               <Edit className="h-4 w-4 mr-2" />
               Editar Proyecto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN (FALTABA TODO ESTO) */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-danger/10 flex items-center justify-center">
+              <Trash2 className="h-8 w-8 text-danger" />
+            </div>
+            <DialogTitle className="text-center text-xl">
+              ¿Deshabilitar proyecto?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-center text-text-secondary">
+              ¿Estás seguro que deseas deshabilitar este proyecto?
+            </p>
+            {projectToDelete && (
+              <div className="bg-neutral-50 dark:bg-neutral-900 p-4 rounded-lg space-y-2">
+                <div>
+                  <p className="text-xs text-text-secondary">Código</p>
+                  <p className="font-semibold">{projectToDelete.code}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-text-secondary">Nombre</p>
+                  <p className="font-medium">{projectToDelete.name}</p>
+                </div>
+              </div>
+            )}
+            <div className="bg-warning/10 border border-warning/20 p-3 rounded-lg">
+              <p className="text-sm text-warning-dark dark:text-warning-light">
+                <strong>Nota:</strong> El proyecto no se eliminará permanentemente, solo se deshabilitará y dejará de aparecer en el listado activo.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deshabilitando..." : "Sí, Deshabilitar"}
             </Button>
           </DialogFooter>
         </DialogContent>

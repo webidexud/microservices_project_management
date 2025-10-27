@@ -7,14 +7,15 @@ import CreateProject from './pages/CreateProject'
 import Catalogs from './pages/Catalogs'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
-import ConnectionTest from './pages/ConnectionTest' // 👈 NUEVO
+import ConnectionTest from './pages/ConnectionTest'
+import EditProject from './pages/EditProject'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       retry: 1,
-      staleTime: 5 * 60 * 1000,
+      staleTime: 0, // Sin caché
     },
   },
 })
@@ -32,7 +33,8 @@ function App() {
             <Route path="catalogs/*" element={<Catalogs />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="connection-test" element={<ConnectionTest />} /> {/* 👈 NUEVO */}
+            <Route path="connection-test" element={<ConnectionTest />} />
+            <Route path="projects/edit/:id" element={<EditProject />} />
           </Route>
         </Routes>
       </BrowserRouter>

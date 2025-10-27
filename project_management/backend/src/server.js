@@ -1250,6 +1250,710 @@ app.patch('/api/officials/:id/toggle', async (req, res) => {
 });
 
 // ============================================
+// PROYECTOS
+// ============================================
+
+// ========== FUNCIONES AUXILIARES ==========
+
+/**
+ * Limpia un número formateado y lo convierte a float
+ * Ejemplo: "450.000.000" → 450000000
+ */
+function cleanNumber(value) {
+  if (!value || value === '') return null;
+  if (typeof value === 'number') return value;
+  return parseFloat(value.toString().replace(/\./g, ''));
+}
+
+/**
+ * Genera el siguiente número interno de proyecto para un año dado
+ */
+async function getNextProjectNumber(client, year) {
+  const result = await client.query(
+    `SELECT COALESCE(MAX(internal_project_number), 0) + 1 as next_number
+     FROM projects 
+     WHERE project_year = $1`,
+    [year]
+  );
+  return result.rows[0].next_number;
+}
+
+/**
+ * Valida que todos los campos requeridos estén presentes
+ */
+function validateProjectData(data) {
+  const errors = [];
+  
+  const requiredFields = [
+    { field: 'anio_proyecto', name: 'Año del proyecto' },
+    { field: 'nombre_proyecto', name: 'Nombre del proyecto' },
+    { field: 'objeto_proyecto', name: 'Objeto del proyecto' },
+    { field: 'entidad_id', name: 'Entidad' },
+    { field: 'dependencia_ejecutora_id', name: 'Dependencia ejecutora' },
+    { field: 'estado_proyecto_id', name: 'Estado del proyecto' },
+    { field: 'tipo_proyecto_id', name: 'Tipo de proyecto' },
+    { field: 'tipo_financiacion_id', name: 'Tipo de financiación' },
+    { field: 'modalidad_ejecucion_id', name: 'Modalidad de ejecución' },
+    { field: 'valor_proyecto', name: 'Valor del proyecto' },
+    { field: 'fecha_inicio', name: 'Fecha de inicio' },
+    { field: 'fecha_finalizacion', name: 'Fecha de finalización' },
+    { field: 'funcionario_ordenador_id', name: 'Funcionario ordenador' }
+  ];
+  
+  for (const { field, name } of requiredFields) {
+    if (!data[field] || data[field] === '') {
+      errors.push(`${name} es obligatorio`);
+    }
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+// ========== ENDPOINTS DE PROYECTOS ==========
+
+// GET - Listar todos los proyectos
+app.get('/api/projects', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT 
+        p.project_id as id,
+        p.project_year as year,
+        p.internal_project_number as internal_number,
+        p.external_project_number as external_number,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
+        p.project_name as name,
+        p.project_purpose as purpose,
+        p.project_value as value,
+        p.start_date,
+        p.end_date,
+        p.is_active as active,
+        e.entity_name as entity,
+        ed.department_name as department,
+        ps.status_name as status,
+        pt.type_name as type,
+        ft.financing_name as financing,
+        em.modality_name as execution_modality,
+        cm.modality_name as contracting_modality,
+        CONCAT(oo.first_name, ' ', oo.first_surname) as ordering_official
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      LEFT JOIN project_types pt ON p.project_type_id = pt.project_type_id
+      LEFT JOIN financing_types ft ON p.financing_type_id = ft.financing_type_id
+      LEFT JOIN execution_modalities em ON p.execution_modality_id = em.execution_modality_id
+      LEFT JOIN contracting_modalities cm ON p.contracting_modality_id = cm.contracting_modality_id
+      LEFT JOIN ordering_officials oo ON p.ordering_official_id = oo.official_id
+      WHERE p.is_active = true
+      ORDER BY p.project_year DESC, p.internal_project_number DESC`
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener proyectos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Obtener un proyecto por ID
+app.get('/api/projects/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await pool.connect();
+    
+    // Obtener proyecto principal
+    const projectResult = await client.query(
+      `SELECT 
+        p.*,
+        e.entity_name,
+        ed.department_name,
+        ps.status_name,
+        pt.type_name,
+        ft.financing_name,
+        em.modality_name as execution_modality_name,
+        cm.modality_name as contracting_modality_name,
+        CONCAT(oo.first_name, ' ', oo.first_surname) as ordering_official_name
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      LEFT JOIN project_types pt ON p.project_type_id = pt.project_type_id
+      LEFT JOIN financing_types ft ON p.financing_type_id = ft.financing_type_id
+      LEFT JOIN execution_modalities em ON p.execution_modality_id = em.execution_modality_id
+      LEFT JOIN contracting_modalities cm ON p.contracting_modality_id = cm.contracting_modality_id
+      LEFT JOIN ordering_officials oo ON p.ordering_official_id = oo.official_id
+      WHERE p.project_id = $1`,
+      [id]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    
+    // Obtener correos secundarios
+    const emailsResult = await client.query(
+      `SELECT email 
+       FROM project_secondary_emails 
+       WHERE project_id = $1 AND is_active = true`,
+      [id]
+    );
+    
+    client.release();
+    
+    const project = projectResult.rows[0];
+    project.secondary_emails = emailsResult.rows.map(row => row.email);
+    
+    res.json(project);
+  } catch (error) {
+    console.error('Error al obtener proyecto:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST - Crear nuevo proyecto
+app.post('/api/projects', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    // 1. Validar datos requeridos
+    const validation = validateProjectData(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: 'Datos inválidos',
+        details: validation.errors 
+      });
+    }
+    
+    // 2. Extraer y limpiar datos
+    const {
+      anio_proyecto,
+      numero_proyecto_externo,
+      nombre_proyecto,
+      objeto_proyecto,
+      entidad_id,
+      dependencia_ejecutora_id,
+      estado_proyecto_id,
+      tipo_proyecto_id,
+      tipo_financiacion_id,
+      modalidad_ejecucion_id,
+      modalidad_contratacion_id,
+      valor_proyecto,
+      codigo_contable,
+      porcentaje_beneficio,
+      valor_beneficio,
+      aporte_universidad,
+      aporte_entidad,
+      cantidad_beneficiarios,
+      fecha_suscripcion,
+      fecha_inicio,
+      fecha_finalizacion,
+      funcionario_ordenador_id,
+      correo_principal,
+      acto_administrativo,
+      enlace_secop,
+      observaciones,
+      correos_secundarios
+    } = req.body;
+    
+    // Limpiar números (quitar separadores de miles)
+    const projectValue = cleanNumber(valor_proyecto);
+    const benefitValue = cleanNumber(valor_beneficio);
+    const univContribution = cleanNumber(aporte_universidad);
+    const entityContribution = cleanNumber(aporte_entidad);
+    
+    // 3. Validaciones adicionales
+    if (projectValue <= 0) {
+      return res.status(400).json({ error: 'El valor del proyecto debe ser mayor a cero' });
+    }
+    
+    if (new Date(fecha_finalizacion) < new Date(fecha_inicio)) {
+      return res.status(400).json({ error: 'La fecha de finalización debe ser posterior a la fecha de inicio' });
+    }
+    
+    // 4. Iniciar transacción
+    await client.query('BEGIN');
+    
+    // 5. Auto-generar número interno de proyecto
+    const internalNumber = await getNextProjectNumber(client, anio_proyecto);
+    
+    console.log(`🔢 Generando proyecto: ${anio_proyecto}-${internalNumber}`);
+    
+    // 6. Insertar proyecto principal
+    const projectResult = await client.query(
+      `INSERT INTO projects (
+        project_year,
+        internal_project_number,
+        external_project_number,
+        project_name,
+        project_purpose,
+        entity_id,
+        executing_department_id,
+        project_status_id,
+        project_type_id,
+        financing_type_id,
+        execution_modality_id,
+        contracting_modality_id,
+        project_value,
+        accounting_code,
+        institutional_benefit_percentage,
+        institutional_benefit_value,
+        university_contribution,
+        entity_contribution,
+        beneficiaries_count,
+        subscription_date,
+        start_date,
+        end_date,
+        ordering_official_id,
+        main_email,
+        administrative_act,
+        secop_link,
+        observations,
+        is_active,
+        created_by_user_id
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+        $21, $22, $23, $24, $25, $26, $27, true, NULL
+      ) RETURNING project_id`,
+      [
+        anio_proyecto,
+        internalNumber,
+        numero_proyecto_externo || null,
+        nombre_proyecto,
+        objeto_proyecto,
+        entidad_id,
+        dependencia_ejecutora_id,
+        estado_proyecto_id,
+        tipo_proyecto_id,
+        tipo_financiacion_id,
+        modalidad_ejecucion_id,
+        modalidad_contratacion_id || null,
+        projectValue,
+        codigo_contable || null,
+        porcentaje_beneficio || 12,
+        benefitValue,
+        univContribution || 0,
+        entityContribution,
+        cantidad_beneficiarios || null,
+        fecha_suscripcion || null,
+        fecha_inicio,
+        fecha_finalizacion,
+        funcionario_ordenador_id,
+        correo_principal || null,
+        acto_administrativo || null,
+        enlace_secop || null,
+        observaciones || null
+      ]
+    );
+    
+    const projectId = projectResult.rows[0].project_id;
+    
+    console.log(`✅ Proyecto creado con ID: ${projectId}`);
+    
+    // 7. Insertar correos secundarios (si existen)
+    if (correos_secundarios && Array.isArray(correos_secundarios) && correos_secundarios.length > 0) {
+      for (const email of correos_secundarios) {
+        if (email && email.trim() !== '') {
+          await client.query(
+            `INSERT INTO project_secondary_emails (project_id, email, is_active)
+             VALUES ($1, $2, true)`,
+            [projectId, email.trim()]
+          );
+        }
+      }
+      console.log(`📧 ${correos_secundarios.length} correos secundarios agregados`);
+    }
+    
+    // 8. Confirmar transacción
+    await client.query('COMMIT');
+    
+    // 9. Obtener el proyecto completo para devolver
+    const fullProjectResult = await client.query(
+      `SELECT 
+        p.project_id as id,
+        p.project_year as year,
+        p.internal_project_number as internal_number,
+        p.external_project_number as external_number,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
+        p.project_name as name,
+        p.project_purpose as purpose,
+        p.project_value as value,
+        p.start_date,
+        p.end_date,
+        e.entity_name as entity,
+        ed.department_name as department,
+        ps.status_name as status
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      WHERE p.project_id = $1`,
+      [projectId]
+    );
+    
+    console.log(`🎉 Proyecto ${anio_proyecto}-${internalNumber} creado exitosamente`);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Proyecto creado exitosamente',
+      project: fullProjectResult.rows[0]
+    });
+    
+  } catch (error) {
+    // Revertir transacción en caso de error
+    await client.query('ROLLBACK');
+    
+    console.error('❌ Error al crear proyecto:', error);
+    
+    // Manejo de errores específicos de PostgreSQL
+    if (error.code === '23505') {
+      return res.status(409).json({ 
+        error: 'Ya existe un proyecto con ese año y número interno' 
+      });
+    }
+    
+    if (error.code === '23503') {
+      return res.status(400).json({ 
+        error: 'Una o más relaciones (entidad, departamento, etc.) no existen en la base de datos' 
+      });
+    }
+    
+    if (error.code === '23514') {
+      return res.status(400).json({ 
+        error: 'Los datos no cumplen con las restricciones de la base de datos' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Error al crear el proyecto',
+      details: error.message 
+    });
+    
+  } finally {
+    client.release();
+  }
+});
+
+// PUT - Actualizar proyecto existente
+app.put('/api/projects/:id', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { id } = req.params;
+    
+    // 1. Verificar que el proyecto existe
+    const checkProject = await client.query(
+      'SELECT project_id FROM projects WHERE project_id = $1',
+      [id]
+    );
+    
+    if (checkProject.rows.length === 0) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    
+    // 2. Validar datos requeridos
+    const validation = validateProjectData(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: 'Datos inválidos',
+        details: validation.errors 
+      });
+    }
+    
+    // 3. Extraer y limpiar datos
+    const {
+      anio_proyecto,
+      numero_proyecto_externo,
+      nombre_proyecto,
+      objeto_proyecto,
+      entidad_id,
+      dependencia_ejecutora_id,
+      estado_proyecto_id,
+      tipo_proyecto_id,
+      tipo_financiacion_id,
+      modalidad_ejecucion_id,
+      modalidad_contratacion_id,
+      valor_proyecto,
+      codigo_contable,
+      porcentaje_beneficio,
+      valor_beneficio,
+      aporte_universidad,
+      aporte_entidad,
+      cantidad_beneficiarios,
+      fecha_suscripcion,
+      fecha_inicio,
+      fecha_finalizacion,
+      funcionario_ordenador_id,
+      correo_principal,
+      acto_administrativo,
+      enlace_secop,
+      observaciones,
+      correos_secundarios
+    } = req.body;
+    
+    // Limpiar números
+    const projectValue = cleanNumber(valor_proyecto);
+    const benefitValue = cleanNumber(valor_beneficio);
+    const univContribution = cleanNumber(aporte_universidad);
+    const entityContribution = cleanNumber(aporte_entidad);
+    
+    // 4. Validaciones adicionales
+    if (projectValue <= 0) {
+      return res.status(400).json({ error: 'El valor del proyecto debe ser mayor a cero' });
+    }
+    
+    if (new Date(fecha_finalizacion) < new Date(fecha_inicio)) {
+      return res.status(400).json({ error: 'La fecha de finalización debe ser posterior a la fecha de inicio' });
+    }
+    
+    // 5. Iniciar transacción
+    await client.query('BEGIN');
+    
+    console.log(`🔄 Actualizando proyecto ID: ${id}`);
+    
+    // 6. Actualizar proyecto principal
+    const projectResult = await client.query(
+      `UPDATE projects SET
+        project_year = $1,
+        external_project_number = $2,
+        project_name = $3,
+        project_purpose = $4,
+        entity_id = $5,
+        executing_department_id = $6,
+        project_status_id = $7,
+        project_type_id = $8,
+        financing_type_id = $9,
+        execution_modality_id = $10,
+        contracting_modality_id = $11,
+        project_value = $12,
+        accounting_code = $13,
+        institutional_benefit_percentage = $14,
+        institutional_benefit_value = $15,
+        university_contribution = $16,
+        entity_contribution = $17,
+        beneficiaries_count = $18,
+        subscription_date = $19,
+        start_date = $20,
+        end_date = $21,
+        ordering_official_id = $22,
+        main_email = $23,
+        administrative_act = $24,
+        secop_link = $25,
+        observations = $26,
+        updated_at = CURRENT_TIMESTAMP,
+        updated_by_user_id = NULL
+      WHERE project_id = $27
+      RETURNING project_id`,
+      [
+        anio_proyecto,
+        numero_proyecto_externo || null,
+        nombre_proyecto,
+        objeto_proyecto,
+        entidad_id,
+        dependencia_ejecutora_id,
+        estado_proyecto_id,
+        tipo_proyecto_id,
+        tipo_financiacion_id,
+        modalidad_ejecucion_id,
+        modalidad_contratacion_id || null,
+        projectValue,
+        codigo_contable || null,
+        porcentaje_beneficio || 12,
+        benefitValue,
+        univContribution || 0,
+        entityContribution,
+        cantidad_beneficiarios || null,
+        fecha_suscripcion || null,
+        fecha_inicio,
+        fecha_finalizacion,
+        funcionario_ordenador_id,
+        correo_principal || null,
+        acto_administrativo || null,
+        enlace_secop || null,
+        observaciones || null,
+        id
+      ]
+    );
+    
+    console.log(`✅ Proyecto actualizado: ID ${id}`);
+    
+    // 7. Actualizar correos secundarios
+    // Primero, desactivar todos los correos existentes
+    await client.query(
+      `UPDATE project_secondary_emails 
+       SET is_active = false 
+       WHERE project_id = $1`,
+      [id]
+    );
+    
+    // Luego, insertar los nuevos correos (si existen)
+    if (correos_secundarios && Array.isArray(correos_secundarios) && correos_secundarios.length > 0) {
+      for (const email of correos_secundarios) {
+        if (email && email.trim() !== '') {
+          // Intentar reactivar si ya existe, sino insertar nuevo
+          const existingEmail = await client.query(
+            `SELECT secondary_email_id 
+             FROM project_secondary_emails 
+             WHERE project_id = $1 AND email = $2`,
+            [id, email.trim()]
+          );
+          
+          if (existingEmail.rows.length > 0) {
+            // Reactivar correo existente
+            await client.query(
+              `UPDATE project_secondary_emails 
+               SET is_active = true 
+               WHERE secondary_email_id = $1`,
+              [existingEmail.rows[0].secondary_email_id]
+            );
+          } else {
+            // Insertar nuevo correo
+            await client.query(
+              `INSERT INTO project_secondary_emails (project_id, email, is_active)
+               VALUES ($1, $2, true)`,
+              [id, email.trim()]
+            );
+          }
+        }
+      }
+      console.log(`📧 Correos secundarios actualizados`);
+    }
+    
+    // 8. Confirmar transacción
+    await client.query('COMMIT');
+    
+    // 9. Obtener el proyecto actualizado completo
+    const fullProjectResult = await client.query(
+      `SELECT 
+        p.project_id as id,
+        p.project_year as year,
+        p.internal_project_number as internal_number,
+        p.external_project_number as external_number,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
+        p.project_name as name,
+        p.project_purpose as purpose,
+        p.project_value as value,
+        p.start_date,
+        p.end_date,
+        e.entity_name as entity,
+        ed.department_name as department,
+        ps.status_name as status
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      WHERE p.project_id = $1`,
+      [id]
+    );
+    
+    console.log(`🎉 Proyecto ${id} actualizado exitosamente`);
+    
+    res.json({
+      success: true,
+      message: 'Proyecto actualizado exitosamente',
+      project: fullProjectResult.rows[0]
+    });
+    
+  } catch (error) {
+    // Revertir transacción en caso de error
+    await client.query('ROLLBACK');
+    
+    console.error('❌ Error al actualizar proyecto:', error);
+    
+    // Manejo de errores específicos
+    if (error.code === '23503') {
+      return res.status(400).json({ 
+        error: 'Una o más relaciones (entidad, departamento, etc.) no existen en la base de datos' 
+      });
+    }
+    
+    if (error.code === '23514') {
+      return res.status(400).json({ 
+        error: 'Los datos no cumplen con las restricciones de la base de datos' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Error al actualizar el proyecto',
+      details: error.message 
+    });
+    
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE - Deshabilitar proyecto (soft delete)
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await pool.connect();
+    
+    // 1. Verificar que el proyecto existe
+    const checkProject = await client.query(
+      'SELECT project_id, is_active, project_name FROM projects WHERE project_id = $1',
+      [id]
+    );
+    
+    if (checkProject.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    
+    const project = checkProject.rows[0];
+    
+    // 2. Verificar si ya está deshabilitado
+    if (!project.is_active) {
+      client.release();
+      return res.status(400).json({ 
+        error: 'El proyecto ya está deshabilitado',
+        project_id: id,
+        is_active: false
+      });
+    }
+    
+    console.log(`🗑️ Deshabilitando proyecto: ${project.project_name} (ID: ${id})`);
+    
+    // 3. Deshabilitar proyecto (soft delete)
+    const result = await client.query(
+      `UPDATE projects 
+       SET is_active = false, 
+           updated_at = CURRENT_TIMESTAMP,
+           updated_by_user_id = NULL
+       WHERE project_id = $1
+       RETURNING 
+         project_id as id,
+         project_name as name,
+         is_active as active,
+         updated_at`,
+      [id]
+    );
+    
+    client.release();
+    
+    console.log(`✅ Proyecto ${id} deshabilitado exitosamente`);
+    
+    res.json({
+      success: true,
+      message: 'Proyecto deshabilitado exitosamente',
+      project: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al deshabilitar proyecto:', error);
+    res.status(500).json({ 
+      error: 'Error al deshabilitar el proyecto',
+      details: error.message 
+    });
+  }
+});
+
+// ============================================
 // INICIAR SERVIDOR
 // ============================================
 app.listen(PORT, () => {
@@ -1264,6 +1968,10 @@ app.listen(PORT, () => {
   console.log(`   - GET http://localhost:${PORT}/api/contracting-modalities`);
   console.log(`   - GET http://localhost:${PORT}/api/project-states`);
   console.log(`   - GET http://localhost:${PORT}/api/officials`);
+  console.log(`   - GET http://localhost:${PORT}/api/projects`);
+  console.log(`   - POST http://localhost:${PORT}/api/projects`);
+  console.log(`   - PUT http://localhost:${PORT}/api/projects/:id`);
+  console.log(`   - DELETE http://localhost:${PORT}/api/projects/:id`);
   
   testConnection().then(result => {
     if (result.success) {
