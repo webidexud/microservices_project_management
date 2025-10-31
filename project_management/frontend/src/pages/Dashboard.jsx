@@ -1,16 +1,17 @@
 import { useQuery } from "@tanstack/react-query"
+import { useNavigate } from "react-router-dom"
 import {
   TrendingUp,
   DollarSign,
   Clock,
   Building2,
-  Users,
   FileText,
-  AlertCircle,
-  CheckCircle2,
+  ArrowUpRight,
+  Calendar,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Table,
   TableBody,
@@ -37,6 +38,8 @@ import {
 import { dashboardApi } from "@/lib/api"
 
 export default function Dashboard() {
+  const navigate = useNavigate()
+
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ["dashboard-metrics"],
     queryFn: dashboardApi.getMetrics,
@@ -58,12 +61,12 @@ export default function Dashboard() {
 
   const getStatusColor = (status) => {
     const colors = {
-      "En ejecución": "info",
-      "Por iniciar": "warning",
-      Finalizado: "success",
-      Suspendido: "danger",
+      "En ejecución": "bg-blue-100 text-blue-800",
+      "Por iniciar": "bg-yellow-100 text-yellow-800",
+      "Finalizado": "bg-green-100 text-green-800",
+      "Suspendido": "bg-red-100 text-red-800",
     }
-    return colors[status] || "default"
+    return colors[status] || "bg-gray-100 text-gray-800"
   }
 
   if (metricsLoading || chartsLoading || projectsLoading) {
@@ -80,111 +83,148 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-text-secondary mt-1">
-          Resumen general del sistema de gestión de proyectos
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-text-secondary mt-1">
+            Resumen general del sistema de gestión de proyectos
+          </p>
+        </div>
+        <Button onClick={() => navigate('/projects/create')}>
+          <FileText className="h-4 w-4 mr-2" />
+          Nuevo Proyecto
+        </Button>
       </div>
 
       {/* Métricas principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/projects')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">
               Proyectos Activos
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.activeProjects?.value || 0}</div>
-            <p className="text-xs text-success mt-1">
-              {metrics?.activeProjects?.change > 0 ? '+' : ''}{metrics?.activeProjects?.change || 0}% vs mes anterior
+            <div className="text-3xl font-bold text-primary">
+              {metrics?.activeProjects?.value || 0}
+            </div>
+            <p className="text-xs text-text-secondary mt-2 flex items-center gap-1">
+              <ArrowUpRight className="h-3 w-3 text-success" />
+              Total de proyectos en el sistema
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">
               Valor Total
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-success" />
+            <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+              <DollarSign className="h-5 w-5 text-success" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-success">
               {formatCurrency(metrics?.totalValue?.value || 0)}
             </div>
-            <p className="text-xs text-success mt-1">
-              {metrics?.totalValue?.change > 0 ? '+' : ''}{metrics?.totalValue?.change || 0}% vs mes anterior
+            <p className="text-xs text-text-secondary mt-2">
+              Suma de todos los proyectos activos
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">
               Por Vencer
             </CardTitle>
-            <Clock className="h-4 w-4 text-warning" />
+            <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-warning" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.expiring?.value || 0}</div>
-            <p className="text-xs text-text-secondary mt-1">
+            <div className="text-3xl font-bold text-warning">
+              {metrics?.expiring?.value || 0}
+            </div>
+            <p className="text-xs text-text-secondary mt-2">
               Próximos 30 días
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow" onClick={() => navigate('/catalogs/entities')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">
               Entidades
             </CardTitle>
-            <Building2 className="h-4 w-4 text-info" />
+            <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-info" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.entities?.value || 0}</div>
-            <p className="text-xs text-success mt-1">
-              {metrics?.entities?.change > 0 ? '+' : ''}{metrics?.entities?.change || 0} nuevas
+            <div className="text-3xl font-bold text-info">
+              {metrics?.entities?.value || 0}
+            </div>
+            <p className="text-xs text-text-secondary mt-2">
+              Entidades registradas
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Gráficos */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Evolución de Valor */}
         <Card>
           <CardHeader>
-            <CardTitle>Evolución del Valor de Proyectos</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Evolución del Valor de Proyectos
+            </CardTitle>
+            <p className="text-sm text-text-secondary">Últimos 6 meses</p>
           </CardHeader>
           <CardContent>
             {charts?.monthlyEvolution?.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={charts.monthlyEvolution}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fill: '#666' }}
+                    tickLine={{ stroke: '#E0E0E0' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#666' }}
+                    tickLine={{ stroke: '#E0E0E0' }}
+                    tickFormatter={(value) => `$${(value / 1000000).toFixed(0)}M`}
+                  />
                   <Tooltip
-                    formatter={(value) => formatCurrency(value)}
+                    formatter={(value) => [formatCurrency(value), 'Valor']}
                     contentStyle={{
                       backgroundColor: "white",
-                      border: "1px solid #CFD8DC",
+                      border: "1px solid #E0E0E0",
                       borderRadius: "8px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
                     }}
                   />
                   <Line
                     type="monotone"
                     dataKey="value"
                     stroke="#0097A7"
-                    strokeWidth={2}
+                    strokeWidth={3}
+                    dot={{ fill: '#0097A7', r: 4 }}
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-text-secondary">
-                No hay datos disponibles
+              <div className="h-[300px] flex flex-col items-center justify-center text-text-secondary">
+                <FileText className="h-12 w-12 mb-3 opacity-30" />
+                <p className="text-sm">No hay datos disponibles</p>
               </div>
             )}
           </CardContent>
@@ -193,7 +233,11 @@ export default function Dashboard() {
         {/* Proyectos por Estado */}
         <Card>
           <CardHeader>
-            <CardTitle>Proyectos por Estado</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Proyectos por Estado
+            </CardTitle>
+            <p className="text-sm text-text-secondary">Distribución actual</p>
           </CardHeader>
           <CardContent className="flex items-center justify-center">
             {charts?.projectsByStatus?.length > 0 ? (
@@ -205,22 +249,30 @@ export default function Dashboard() {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
+                      `${name}: ${(percent * 100).toFixed(0)}%`
                     }
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
                   >
                     {charts.projectsByStatus.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${index}`} fill={entry.color || '#0097A7'} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #E0E0E0",
+                      borderRadius: "8px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-text-secondary">
-                No hay datos disponibles
+              <div className="h-[300px] flex flex-col items-center justify-center text-text-secondary">
+                <FileText className="h-12 w-12 mb-3 opacity-30" />
+                <p className="text-sm">No hay datos disponibles</p>
               </div>
             )}
           </CardContent>
@@ -230,28 +282,49 @@ export default function Dashboard() {
       {/* Proyectos por Tipo */}
       <Card>
         <CardHeader>
-          <CardTitle>Proyectos por Tipo</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Proyectos por Tipo
+          </CardTitle>
+          <p className="text-sm text-text-secondary">Top 10 tipos de proyecto</p>
         </CardHeader>
         <CardContent>
           {charts?.projectsByType?.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={charts.projectsByType}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fill: '#666' }}
+                  tickLine={{ stroke: '#E0E0E0' }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                />
+                <YAxis 
+                  tick={{ fill: '#666' }}
+                  tickLine={{ stroke: '#E0E0E0' }}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "white",
-                    border: "1px solid #CFD8DC",
+                    border: "1px solid #E0E0E0",
                     borderRadius: "8px",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
                   }}
                 />
-                <Bar dataKey="count" fill="#0097A7" radius={[8, 8, 0, 0]} />
+                <Bar 
+                  dataKey="count" 
+                  fill="#0097A7" 
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={60}
+                />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-text-secondary">
-              No hay datos disponibles
+            <div className="h-[300px] flex flex-col items-center justify-center text-text-secondary">
+              <FileText className="h-12 w-12 mb-3 opacity-30" />
+              <p className="text-sm">No hay datos disponibles</p>
             </div>
           )}
         </CardContent>
@@ -259,40 +332,67 @@ export default function Dashboard() {
 
       {/* Proyectos Recientes */}
       <Card>
-        <CardHeader>
-          <CardTitle>Proyectos Recientes</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Proyectos Recientes
+            </CardTitle>
+            <p className="text-sm text-text-secondary mt-1">Últimos 5 proyectos creados</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/projects')}>
+            Ver todos
+          </Button>
         </CardHeader>
         <CardContent>
           {recentProjects?.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Proyecto</TableHead>
-                  <TableHead>Entidad</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha Fin</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentProjects.map((project) => (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">{project.name}</TableCell>
-                    <TableCell>{project.entity}</TableCell>
-                    <TableCell>{formatCurrency(project.value)}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusColor(project.status)}>
-                        {project.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(project.endDate)}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Entidad</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Fecha Inicio</TableHead>
+                    <TableHead>Estado</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {recentProjects.map((project) => (
+                    <TableRow 
+                      key={project.id}
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => navigate(`/projects/edit/${project.id}`)}
+                    >
+                      <TableCell className="font-medium">{project.code}</TableCell>
+                      <TableCell className="max-w-xs truncate">{project.name}</TableCell>
+                      <TableCell>{project.entity}</TableCell>
+                      <TableCell className="font-semibold text-success">
+                        {formatCurrency(project.value)}
+                      </TableCell>
+                      <TableCell>{formatDate(project.start_date)}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(project.status)}>
+                          {project.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            <div className="py-8 text-center text-text-secondary">
-              No hay proyectos recientes
+            <div className="py-12 text-center">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-30 text-text-secondary" />
+              <p className="text-text-secondary">No hay proyectos recientes</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => navigate('/projects/create')}
+              >
+                Crear primer proyecto
+              </Button>
             </div>
           )}
         </CardContent>

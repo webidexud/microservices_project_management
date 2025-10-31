@@ -117,6 +117,33 @@ export const dependenciesApi = {
   getActive: () => fetch(`${API_BASE_URL}/dependencies?active=true`).then(handleResponse),
 }
 
+// Modificaciones
+export const modificationsApi = {
+  // Obtener modificaciones de un proyecto
+  getByProject: (projectId) => 
+    fetch(`${API_BASE_URL}/projects/${projectId}/modifications`)
+      .then(handleResponse),
+  
+  // Obtener resumen de modificaciones
+  getSummary: (projectId) =>
+    fetch(`${API_BASE_URL}/projects/${projectId}/modifications/summary`)
+      .then(handleResponse),
+  
+  // Crear modificación
+  create: (projectId, data) => 
+    fetch(`${API_BASE_URL}/projects/${projectId}/modifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(handleResponse),
+  
+  // Eliminar modificación
+  delete: (id) => 
+    fetch(`${API_BASE_URL}/modifications/${id}`, {
+      method: 'DELETE'
+    }).then(handleResponse),
+}
+
 // Estados (para selectores)
 export const statesApi = {
   getAll: () => fetch(`${API_BASE_URL}/project-states`).then(handleResponse),

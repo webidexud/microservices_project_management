@@ -1639,6 +1639,156 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
+// GET - Métricas del Dashboard
+app.get('/api/dashboard/metrics', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    // Proyectos activos
+    const activeProjectsResult = await client.query(
+      `SELECT COUNT(*) as count 
+       FROM projects 
+       WHERE is_active = true`
+    );
+    
+    // Valor total de proyectos
+    const totalValueResult = await client.query(
+      `SELECT SUM(project_value) as total 
+       FROM projects 
+       WHERE is_active = true`
+    );
+    
+    // Proyectos por vencer (próximos 30 días)
+    const expiringResult = await client.query(
+      `SELECT COUNT(*) as count 
+       FROM projects 
+       WHERE is_active = true 
+       AND end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'`
+    );
+    
+    // Total de entidades
+    const entitiesResult = await client.query(
+      `SELECT COUNT(*) as count 
+       FROM entities 
+       WHERE is_active = true`
+    );
+    
+    client.release();
+    
+    res.json({
+      activeProjects: {
+        value: parseInt(activeProjectsResult.rows[0].count),
+        change: 0 // Calcular comparación con mes anterior si se requiere
+      },
+      totalValue: {
+        value: parseFloat(totalValueResult.rows[0].total) || 0,
+        change: 0
+      },
+      expiring: {
+        value: parseInt(expiringResult.rows[0].count),
+      },
+      entities: {
+        value: parseInt(entitiesResult.rows[0].count),
+        change: 0
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener métricas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Gráficos del Dashboard
+app.get('/api/dashboard/charts', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    // Proyectos por estado
+    const projectsByStatusResult = await client.query(
+      `SELECT 
+        ps.status_name as name,
+        ps.status_color as color,
+        COUNT(p.project_id) as value
+       FROM project_statuses ps
+       LEFT JOIN projects p ON ps.status_id = p.project_status_id AND p.is_active = true
+       WHERE ps.is_active = true
+       GROUP BY ps.status_id, ps.status_name, ps.status_color
+       ORDER BY ps.display_order`
+    );
+    
+    // Proyectos por tipo
+    const projectsByTypeResult = await client.query(
+      `SELECT 
+        pt.type_name as name,
+        COUNT(p.project_id) as count
+       FROM project_types pt
+       LEFT JOIN projects p ON pt.project_type_id = p.project_type_id AND p.is_active = true
+       WHERE pt.is_active = true
+       GROUP BY pt.project_type_id, pt.type_name
+       ORDER BY count DESC
+       LIMIT 10`
+    );
+    
+    // Evolución mensual (últimos 6 meses)
+    const monthlyEvolutionResult = await client.query(
+      `SELECT 
+        TO_CHAR(p.start_date, 'Mon') as month,
+        SUM(p.project_value) as value
+       FROM projects p
+       WHERE p.is_active = true
+       AND p.start_date >= CURRENT_DATE - INTERVAL '6 months'
+       GROUP BY TO_CHAR(p.start_date, 'Mon'), DATE_TRUNC('month', p.start_date)
+       ORDER BY DATE_TRUNC('month', p.start_date)`
+    );
+    
+    client.release();
+    
+    res.json({
+      projectsByStatus: projectsByStatusResult.rows,
+      projectsByType: projectsByTypeResult.rows,
+      monthlyEvolution: monthlyEvolutionResult.rows
+    });
+  } catch (error) {
+    console.error('Error al obtener gráficos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Proyectos recientes
+app.get('/api/projects/recent', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT 
+        p.project_id as id,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
+        p.project_name as name,
+        p.project_value as value,
+        p.start_date,
+        p.end_date,
+        e.entity_name as entity,
+        ps.status_name as status,
+        ps.status_color as status_color
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      WHERE p.is_active = true
+      ORDER BY p.created_at DESC
+      LIMIT 5`
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener proyectos recientes:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+
+
+
+
 // PUT - Actualizar proyecto existente
 app.put('/api/projects/:id', async (req, res) => {
   const client = await pool.connect();
@@ -2110,6 +2260,250 @@ app.delete('/api/project-rup-codes/:id', async (req, res) => {
     res.json({ success: true, message: 'Código RUP eliminado' });
   } catch (error) {
     console.error('Error al eliminar código RUP:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// MODIFICACIONES DE PROYECTOS
+// ============================================
+
+// GET - Obtener todas las modificaciones de un proyecto
+app.get('/api/projects/:projectId/modifications', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        modification_id as id,
+        project_id,
+        modification_number as number,
+        modification_type as type,
+        addition_value,
+        extension_days,
+        new_end_date,
+        new_total_value,
+        justification,
+        administrative_act,
+        approval_date,
+        created_at,
+        is_active as active
+      FROM project_modifications
+      WHERE project_id = $1 AND is_active = true
+      ORDER BY modification_number DESC`,
+      [projectId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener modificaciones:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST - Crear nueva modificación
+app.post('/api/projects/:projectId/modifications', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { projectId } = req.params;
+    const {
+      modification_type,
+      addition_value,
+      extension_days,
+      new_end_date,
+      justification,
+      administrative_act,
+      approval_date
+    } = req.body;
+    
+    // 1. Validar campos requeridos
+    if (!modification_type || !justification) {
+      return res.status(400).json({ 
+        error: 'El tipo de modificación y la justificación son obligatorios' 
+      });
+    }
+    
+    // 2. Validar según tipo
+    if (modification_type === 'ADDITION' && !addition_value) {
+      return res.status(400).json({ 
+        error: 'El valor de adición es obligatorio para modificaciones tipo ADICIÓN' 
+      });
+    }
+    
+    if (modification_type === 'EXTENSION' && (!extension_days || !new_end_date)) {
+      return res.status(400).json({ 
+        error: 'Los días de extensión y la nueva fecha son obligatorios para modificaciones tipo PRÓRROGA' 
+      });
+    }
+    
+    if (modification_type === 'BOTH' && (!addition_value || !extension_days || !new_end_date)) {
+      return res.status(400).json({ 
+        error: 'Todos los campos son obligatorios para modificaciones tipo AMBAS' 
+      });
+    }
+    
+    await client.query('BEGIN');
+    
+    // 3. Obtener datos actuales del proyecto
+    const projectResult = await client.query(
+      'SELECT project_value, end_date FROM projects WHERE project_id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    
+    const currentProject = projectResult.rows[0];
+    
+    // 4. Obtener suma de adiciones anteriores
+    const additionsResult = await client.query(
+      `SELECT COALESCE(SUM(addition_value), 0) as total_additions
+       FROM project_modifications
+       WHERE project_id = $1 AND is_active = true
+       AND modification_type IN ('ADDITION', 'BOTH')`,
+      [projectId]
+    );
+    
+    const totalAdditions = parseFloat(additionsResult.rows[0].total_additions);
+    
+    // 5. Calcular nuevo valor total
+    const currentValue = parseFloat(currentProject.project_value);
+    const additionAmount = addition_value ? parseFloat(addition_value) : 0;
+    const newTotalValue = currentValue + totalAdditions + additionAmount;
+    
+    // 6. Obtener siguiente número de modificación
+    const numberResult = await client.query(
+      `SELECT COALESCE(MAX(modification_number), 0) + 1 as next_number
+       FROM project_modifications
+       WHERE project_id = $1`,
+      [projectId]
+    );
+    
+    const modificationNumber = numberResult.rows[0].next_number;
+    
+    console.log(`📝 Creando modificación #${modificationNumber} para proyecto ${projectId}`);
+    
+    // 7. Insertar modificación
+    const insertResult = await client.query(
+      `INSERT INTO project_modifications (
+        project_id,
+        modification_number,
+        modification_type,
+        addition_value,
+        extension_days,
+        new_end_date,
+        new_total_value,
+        justification,
+        administrative_act,
+        approval_date,
+        created_by_user_id,
+        is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, true)
+      RETURNING 
+        modification_id as id,
+        modification_number as number,
+        modification_type as type,
+        addition_value,
+        extension_days,
+        new_end_date,
+        new_total_value,
+        justification,
+        administrative_act,
+        approval_date,
+        created_at`,
+      [
+        projectId,
+        modificationNumber,
+        modification_type,
+        additionAmount || null,
+        extension_days || null,
+        new_end_date || null,
+        newTotalValue,
+        justification,
+        administrative_act || null,
+        approval_date || null
+      ]
+    );
+    
+    await client.query('COMMIT');
+    
+    console.log(`✅ Modificación #${modificationNumber} creada exitosamente`);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Modificación creada exitosamente',
+      modification: insertResult.rows[0]
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error al crear modificación:', error);
+    res.status(500).json({ 
+      error: 'Error al crear la modificación',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE - Deshabilitar modificación (soft delete)
+app.delete('/api/modifications/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `UPDATE project_modifications 
+       SET is_active = false 
+       WHERE modification_id = $1
+       RETURNING modification_id as id, modification_number as number`,
+      [id]
+    );
+    
+    client.release();
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Modificación no encontrada' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Modificación eliminada exitosamente' 
+    });
+  } catch (error) {
+    console.error('Error al eliminar modificación:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Obtener resumen de modificaciones de un proyecto
+app.get('/api/projects/:projectId/modifications/summary', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        COUNT(*) as total_modifications,
+        COALESCE(SUM(CASE WHEN modification_type IN ('ADDITION', 'BOTH') THEN addition_value ELSE 0 END), 0) as total_additions,
+        COALESCE(SUM(CASE WHEN modification_type IN ('EXTENSION', 'BOTH') THEN extension_days ELSE 0 END), 0) as total_extension_days,
+        MAX(new_end_date) as final_end_date,
+        MAX(new_total_value) as final_total_value
+      FROM project_modifications
+      WHERE project_id = $1 AND is_active = true`,
+      [projectId]
+    );
+    
+    client.release();
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al obtener resumen de modificaciones:', error);
     res.status(500).json({ error: error.message });
   }
 });

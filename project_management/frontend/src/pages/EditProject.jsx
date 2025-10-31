@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { rupCodesApi } from "@/lib/api"
+import { FileEdit } from "lucide-react" 
+import ModificationsDialog from "@/components/ModificationsDialog" 
 import RupCodeSelector from "@/components/RupCodeSelector"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -37,6 +39,7 @@ export default function EditProject() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [showModifications, setShowModifications] = useState(false)
 
   // Cargar datos del proyecto
   const { data: project, isLoading: loadingProject } = useQuery({
@@ -50,7 +53,7 @@ export default function EditProject() {
     queryFn: () => entitiesApi.getActive(),
   })
 
-  const { data: departments } = useQuery({
+  const { data: dependencies } = useQuery({
     queryKey: ["dependencies"],
     queryFn: () => dependenciesApi.getActive(),
   })
@@ -84,26 +87,28 @@ export default function EditProject() {
     queryKey: ["officials"],
     queryFn: () => officialsApi.getActive(),
   })
-// Cargar todos los códigos RUP disponibles
-const { data: rupCodes } = useQuery({
-  queryKey: ["rup-codes"],
-  queryFn: () => rupCodesApi.getAll(),
-})
 
-// Cargar códigos RUP ya asignados al proyecto
-const { data: projectRupCodes } = useQuery({
-  queryKey: ["project-rup-codes", id],
-  queryFn: () => {
-    if (project) {
-      return rupCodesApi.getByProject(
-        project.project_year,
-        project.internal_project_number
-      )
-    }
-    return Promise.resolve([])
-  },
-  enabled: !!project,
-})
+  // Cargar todos los códigos RUP disponibles
+  const { data: rupCodes } = useQuery({
+    queryKey: ["rup-codes"],
+    queryFn: () => rupCodesApi.getAll(),
+  })
+
+  // Cargar códigos RUP ya asignados al proyecto
+  const { data: projectRupCodes } = useQuery({
+    queryKey: ["project-rup-codes", id],
+    queryFn: () => {
+      if (project) {
+        return rupCodesApi.getByProject(
+          project.project_year,
+          project.internal_project_number
+        )
+      }
+      return Promise.resolve([])
+    },
+    enabled: !!project,
+  })
+
   const [formData, setFormData] = useState({
     anio_proyecto: new Date().getFullYear(),
     numero_proyecto_externo: "",
@@ -151,7 +156,16 @@ const { data: projectRupCodes } = useQuery({
     return parseFloat(value.toString().replace(/\./g, "")) || 0
   }
 
-// Formatear fecha para input date (YYYY-MM-DD)
+  // Formatear moneda
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
+    }).format(value)
+  }
+
+  // Formatear fecha para input date (YYYY-MM-DD)
   const formatDateForInput = (dateString) => {
     if (!dateString) return ""
     
@@ -177,7 +191,7 @@ const { data: projectRupCodes } = useQuery({
     }
   }
 
-// Cargar datos del proyecto cuando esté disponible
+  // Cargar datos del proyecto cuando esté disponible
   useEffect(() => {
     if (project) {
       setFormData({
@@ -199,7 +213,6 @@ const { data: projectRupCodes } = useQuery({
         aporte_universidad: formatNumber(project.university_contribution),
         aporte_entidad: formatNumber(project.entity_contribution),
         cantidad_beneficiarios: project.beneficiaries_count || "",
-        // ✅ USAR LA FUNCIÓN HELPER PARA LAS FECHAS:
         fecha_suscripcion: formatDateForInput(project.subscription_date),
         fecha_inicio: formatDateForInput(project.start_date),
         fecha_finalizacion: formatDateForInput(project.end_date),
@@ -210,56 +223,51 @@ const { data: projectRupCodes } = useQuery({
         observaciones: project.observations || "",
       })
 
-      if (project.secondary_emails && Array.isArray(project.secondary_emails)) {
+      // Cargar correos secundarios
+      if (project.secondary_emails) {
         setCorreosSecundarios(project.secondary_emails)
       }
     }
   }, [project])
 
-  // Cargar códigos RUP del proyecto
-useEffect(() => {
-  if (projectRupCodes) {
-    const formattedRupCodes = projectRupCodes.map((code) => ({
-      rup_code_id: code.rup_code_id,
-      code: code.code,
-      description: code.description,
-      main_category: code.main_category,
-      subcategory: code.subcategory,
-      is_main_code: code.is_main_code,
-      participation_percentage: code.participation_percentage,
-      observations: code.observations || "",
-    }))
-    setSelectedRupCodes(formattedRupCodes)
-  }
-}, [projectRupCodes])
-
-  // Auto-calcular beneficio institucional
+  // Cargar los códigos RUP ya asignados cuando estén disponibles
   useEffect(() => {
-    const valor = cleanNumber(formData.valor_proyecto)
-    const porcentaje = formData.porcentaje_beneficio || 12
-
-    if (valor > 0) {
-      const beneficio = (valor * porcentaje) / 100
-      setFormData((prev) => ({
-        ...prev,
-        valor_beneficio: formatNumber(beneficio),
+    if (projectRupCodes && projectRupCodes.length > 0) {
+      const formattedCodes = projectRupCodes.map(code => ({
+        rup_code_id: code.rup_code_id,
+        is_main_code: code.is_main_code,
+        participation_percentage: code.participation_percentage,
+        observations: code.observations
       }))
+      setSelectedRupCodes(formattedCodes)
     }
+  }, [projectRupCodes])
+
+  // Calcular valores automáticamente
+  useEffect(() => {
+    const valorProyecto = cleanNumber(formData.valor_proyecto)
+    const porcentaje = parseFloat(formData.porcentaje_beneficio) || 12
+
+    const beneficio = (valorProyecto * porcentaje) / 100
+    setFormData((prev) => ({
+      ...prev,
+      valor_beneficio: formatNumber(beneficio),
+    }))
   }, [formData.valor_proyecto, formData.porcentaje_beneficio])
 
-  // Auto-calcular aporte entidad
   useEffect(() => {
-    const valorTotal = cleanNumber(formData.valor_proyecto)
+    const valorProyecto = cleanNumber(formData.valor_proyecto)
+    const beneficio = cleanNumber(formData.valor_beneficio)
     const aporteUniv = cleanNumber(formData.aporte_universidad)
-    const aporteEnt = valorTotal - aporteUniv
 
-    if (aporteEnt >= 0) {
+    const aporteEntidad = valorProyecto - beneficio - aporteUniv
+    if (aporteEntidad >= 0) {
       setFormData((prev) => ({
         ...prev,
-        aporte_entidad: formatNumber(aporteEnt),
+        aporte_entidad: formatNumber(aporteEntidad),
       }))
     }
-  }, [formData.valor_proyecto, formData.aporte_universidad])
+  }, [formData.valor_proyecto, formData.valor_beneficio, formData.aporte_universidad])
 
   // Calcular duración
   useEffect(() => {
@@ -310,45 +318,53 @@ useEffect(() => {
     setShowConfirm(true)
   }
 
-const confirmarActualizacion = async () => {
-  setIsUpdating(true)
-  try {
-    const datos = {
-      ...formData,
-      valor_proyecto: cleanNumber(formData.valor_proyecto),
-      valor_beneficio: cleanNumber(formData.valor_beneficio),
-      aporte_universidad: cleanNumber(formData.aporte_universidad),
-      aporte_entidad: cleanNumber(formData.aporte_entidad),
-      correos_secundarios: correosSecundarios.filter((e) => e.trim() !== ""),
+  const confirmarActualizacion = async () => {
+    setIsUpdating(true)
+    try {
+      const datos = {
+        ...formData,
+        valor_proyecto: cleanNumber(formData.valor_proyecto),
+        valor_beneficio: cleanNumber(formData.valor_beneficio),
+        aporte_universidad: cleanNumber(formData.aporte_universidad),
+        aporte_entidad: cleanNumber(formData.aporte_entidad),
+        correos_secundarios: correosSecundarios.filter((e) => e.trim() !== ""),
+      }
+
+      // Actualizar el proyecto
+      const respuesta = await projectsApi.update(id, datos)
+      
+      console.log('📦 Respuesta del backend:', respuesta)
+      
+      // Extraer el proyecto de la respuesta
+      const proyectoActualizado = respuesta.project
+      
+      console.log('🔍 Proyecto actualizado:', proyectoActualizado)
+      console.log('📋 Internal number:', proyectoActualizado?.internal_number)
+
+      // Actualizar códigos RUP si el proyecto tiene internal_number
+      if (proyectoActualizado?.internal_number) {
+        await rupCodesApi.assignToProject(
+          formData.anio_proyecto,
+          proyectoActualizado.internal_number,
+          selectedRupCodes
+        )
+      }
+
+      // Invalidar caché
+      queryClient.invalidateQueries({ queryKey: ["project", id] })
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] })
+
+      setShowConfirm(false)
+      alert("¡Proyecto actualizado exitosamente!")
+      navigate("/projects")
+    } catch (error) {
+      console.error("Error al actualizar proyecto:", error)
+      alert("Error al actualizar el proyecto: " + error.message)
+    } finally {
+      setIsUpdating(false)
     }
-
-    // Actualizar el proyecto
-    await projectsApi.update(id, datos)
-
-    // ✅ AGREGAR: Actualizar códigos RUP
-    if (project) {
-      await rupCodesApi.assignToProject(
-        project.project_year,
-        project.internal_project_number,
-        selectedRupCodes
-      )
-    }
-
-    // Invalidar caché
-    queryClient.invalidateQueries({ queryKey: ["projects"] })
-    queryClient.invalidateQueries({ queryKey: ["project", id] })
-    queryClient.invalidateQueries({ queryKey: ["project-rup-codes", id] })
-
-    setShowConfirm(false)
-    alert("¡Proyecto actualizado exitosamente!")
-    navigate("/projects")
-  } catch (error) {
-    console.error("Error al actualizar proyecto:", error)
-    alert("Error al actualizar el proyecto: " + error.message)
-  } finally {
-    setIsUpdating(false)
   }
-}
 
   const agregarCorreo = () => {
     setCorreosSecundarios([...correosSecundarios, ""])
@@ -364,15 +380,6 @@ const confirmarActualizacion = async () => {
     setCorreosSecundarios(correosSecundarios.filter((_, i) => i !== index))
   }
 
-  const formatCurrency = (value) => {
-    if (!value) return "$0"
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-    }).format(value)
-  }
-
   // Calcular porcentajes para la vista previa
   const valorTotal = cleanNumber(formData.valor_proyecto)
   const beneficioInst = cleanNumber(formData.valor_beneficio)
@@ -382,18 +389,35 @@ const confirmarActualizacion = async () => {
   const porcentajeBeneficio = valorTotal > 0 ? (beneficioInst / valorTotal) * 100 : 0
   const porcentajeEntidad = valorTotal > 0 ? (aporteEntidad / valorTotal) * 100 : 0
   const porcentajeUniv = valorTotal > 0 ? (aporteUniv / valorTotal) * 100 : 0
+  const porcentajeOtros = 100 - porcentajeBeneficio - porcentajeEntidad - porcentajeUniv
 
   if (loadingProject) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-text-secondary">Cargando proyecto...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!project) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-xl text-text-secondary">Proyecto no encontrado</p>
+          <Button onClick={() => navigate("/projects")} className="mt-4">
+            Volver a Proyectos
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
-      {/* Header fijo */}
+      {/* Header fijo - IGUAL QUE CREATEPROJECT */}
       <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b shadow-sm">
         <div className="max-w-[1800px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -401,22 +425,34 @@ const confirmarActualizacion = async () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/projects")}
+                onClick={() => navigate('/projects')}
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
                 <h1 className="text-2xl font-bold">Editar Proyecto</h1>
                 <p className="text-sm text-text-secondary mt-0.5">
-                  Modifique la información del proyecto
+                  {project?.code} - {project?.project_name}
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => navigate("/projects")}>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/projects')}
+              >
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit} disabled={isUpdating}>
+              {/* ✅ BOTÓN MODIFICACIONES */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowModifications(true)}
+              >
+                <FileEdit className="h-4 w-4 mr-2" />
+                Modificaciones
+              </Button>
+              <Button onClick={handleSubmit} form="project-form" disabled={isUpdating}>
                 <Save className="h-4 w-4 mr-2" />
                 {isUpdating ? "Actualizando..." : "Actualizar Proyecto"}
               </Button>
@@ -428,9 +464,11 @@ const confirmarActualizacion = async () => {
       {/* Contenido principal */}
       <div className="max-w-[1800px] mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
           {/* Formulario - 2 columnas */}
           <div className="lg:col-span-2">
             <form id="project-form" onSubmit={handleSubmit} className="space-y-6">
+              
               {/* INFORMACIÓN GENERAL */}
               <Card>
                 <CardContent className="p-6 space-y-5">
@@ -511,18 +549,6 @@ const confirmarActualizacion = async () => {
                       {formData.objeto_proyecto.length}/1800
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* RELACIONES */}
-              <Card>
-                <CardContent className="p-6 space-y-5">
-                  <div className="flex items-center gap-3 pb-3 border-b">
-                    <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
-                      🏢
-                    </div>
-                    <h2 className="text-xl font-semibold">Relaciones del Proyecto</h2>
-                  </div>
 
                   <div className="grid grid-cols-2 gap-5">
                     <div>
@@ -555,14 +581,28 @@ const confirmarActualizacion = async () => {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        {departments?.map((dept) => (
-                          <option key={dept.id} value={dept.id}>
-                            {dept.name}
+                        {dependencies?.map((dep) => (
+                          <option key={dep.id} value={dep.id}>
+                            {dep.name}
                           </option>
                         ))}
                       </Select>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
 
+              {/* CLASIFICACIÓN */}
+              <Card>
+                <CardContent className="p-6 space-y-5">
+                  <div className="flex items-center gap-3 pb-3 border-b">
+                    <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
+                      📊
+                    </div>
+                    <h2 className="text-xl font-semibold">Clasificación del Proyecto</h2>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Estado del Proyecto <span className="text-danger">*</span>
@@ -603,7 +643,7 @@ const confirmarActualizacion = async () => {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Financiación <span className="text-danger">*</span>
+                        Tipo de Financiación <span className="text-danger">*</span>
                       </label>
                       <Select
                         name="tipo_financiacion_id"
@@ -615,6 +655,25 @@ const confirmarActualizacion = async () => {
                         {financingTypes?.map((type) => (
                           <option key={type.id} value={type.id}>
                             {type.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Funcionario Ordenador <span className="text-danger">*</span>
+                      </label>
+                      <Select
+                        name="funcionario_ordenador_id"
+                        value={formData.funcionario_ordenador_id}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Seleccione...</option>
+                        {officials?.map((official) => (
+                          <option key={official.id} value={official.id}>
+                            {official.name}
                           </option>
                         ))}
                       </Select>
@@ -633,9 +692,9 @@ const confirmarActualizacion = async () => {
                         required
                       >
                         <option value="">Seleccione...</option>
-                        {executionModalities?.map((modality) => (
-                          <option key={modality.id} value={modality.id}>
-                            {modality.name}
+                        {executionModalities?.map((mod) => (
+                          <option key={mod.id} value={mod.id}>
+                            {mod.name}
                           </option>
                         ))}
                       </Select>
@@ -651,9 +710,9 @@ const confirmarActualizacion = async () => {
                         onChange={handleInputChange}
                       >
                         <option value="">Seleccione...</option>
-                        {contractingModalities?.map((modality) => (
-                          <option key={modality.id} value={modality.id}>
-                            {modality.name}
+                        {contractingModalities?.map((mod) => (
+                          <option key={mod.id} value={mod.id}>
+                            {mod.name}
                           </option>
                         ))}
                       </Select>
@@ -662,34 +721,79 @@ const confirmarActualizacion = async () => {
                 </CardContent>
               </Card>
 
-              {/* INFORMACIÓN FINANCIERA */}
+              {/* INFORMACIÓN ECONÓMICA */}
               <Card>
                 <CardContent className="p-6 space-y-5">
                   <div className="flex items-center gap-3 pb-3 border-b">
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
                       💰
                     </div>
-                    <h2 className="text-xl font-semibold">Información Financiera</h2>
+                    <h2 className="text-xl font-semibold">Información Económica</h2>
                   </div>
 
                   <div className="grid grid-cols-2 gap-5">
+                    <div className="col-span-2">
+                      <label className="text-sm font-medium block mb-2">
+                        Valor Total del Proyecto (COP) <span className="text-danger">*</span>
+                      </label>
+                      <Input
+                        name="valor_proyecto"
+                        value={formData.valor_proyecto}
+                        onChange={handleNumberInput}
+                        required
+                        placeholder="Ej: 450.000.000"
+                      />
+                    </div>
+
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Valor Total del Proyecto <span className="text-danger">*</span>
+                        Porcentaje Beneficio Institucional (%)
                       </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
-                          $
-                        </span>
-                        <Input
-                          name="valor_proyecto"
-                          value={formData.valor_proyecto}
-                          onChange={handleNumberInput}
-                          required
-                          placeholder="0"
-                          className="pl-7"
-                        />
-                      </div>
+                      <Input
+                        type="number"
+                        name="porcentaje_beneficio"
+                        value={formData.porcentaje_beneficio}
+                        onChange={handleInputChange}
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Valor Beneficio Institucional (COP)
+                      </label>
+                      <Input
+                        name="valor_beneficio"
+                        value={formData.valor_beneficio}
+                        disabled
+                        className="bg-gray-100 dark:bg-gray-800"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Aporte Universidad (COP)
+                      </label>
+                      <Input
+                        name="aporte_universidad"
+                        value={formData.aporte_universidad}
+                        onChange={handleNumberInput}
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Aporte Entidad (COP)
+                      </label>
+                      <Input
+                        name="aporte_entidad"
+                        value={formData.aporte_entidad}
+                        disabled
+                        className="bg-gray-100 dark:bg-gray-800"
+                      />
                     </div>
 
                     <div>
@@ -701,123 +805,41 @@ const confirmarActualizacion = async () => {
                         value={formData.codigo_contable}
                         onChange={handleInputChange}
                         maxLength={50}
-                        placeholder="Ej: A-1234-2024"
+                        placeholder="Ej: 1234-5678"
                       />
                     </div>
-                  </div>
-
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                    <h3 className="text-sm font-semibold mb-3 text-blue-900 dark:text-blue-100">
-                      Beneficio Institucional (Auto-calculado)
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium block mb-2">
-                          Porcentaje de Beneficio
-                        </label>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            name="porcentaje_beneficio"
-                            value={formData.porcentaje_beneficio}
-                            onChange={handleInputChange}
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            placeholder="12"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary">
-                            %
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium block mb-2">
-                          Valor del Beneficio
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
-                            $
-                          </span>
-                          <Input
-                            name="valor_beneficio"
-                            value={formData.valor_beneficio}
-                            disabled
-                            className="pl-7 bg-gray-100 dark:bg-gray-800"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-5">
-                    <div>
-                      <label className="text-sm font-medium block mb-2">
-                        Aporte de la Universidad
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
-                          $
-                        </span>
-                        <Input
-                          name="aporte_universidad"
-                          value={formData.aporte_universidad}
-                          onChange={handleNumberInput}
-                          placeholder="0"
-                          className="pl-7"
-                        />
-                      </div>
-                    </div>
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Aporte de la Entidad (Auto-calculado)
+                        Cantidad de Beneficiarios
                       </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
-                          $
-                        </span>
-                        <Input
-                          name="aporte_entidad"
-                          value={formData.aporte_entidad}
-                          disabled
-                          className="pl-7 bg-gray-100 dark:bg-gray-800"
-                        />
-                      </div>
+                      <Input
+                        type="number"
+                        name="cantidad_beneficiarios"
+                        value={formData.cantidad_beneficiarios}
+                        onChange={handleInputChange}
+                        min="0"
+                        placeholder="100"
+                      />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium block mb-2">
-                      Cantidad de Beneficiarios
-                    </label>
-                    <Input
-                      type="number"
-                      name="cantidad_beneficiarios"
-                      value={formData.cantidad_beneficiarios}
-                      onChange={handleInputChange}
-                      min="0"
-                      placeholder="Ej: 500"
-                    />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* FECHAS */}
+              {/* CRONOGRAMA */}
               <Card>
                 <CardContent className="p-6 space-y-5">
                   <div className="flex items-center gap-3 pb-3 border-b">
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
                       📅
                     </div>
-                    <h2 className="text-xl font-semibold">Fechas del Proyecto</h2>
+                    <h2 className="text-xl font-semibold">Cronograma del Proyecto</h2>
                   </div>
 
                   <div className="grid grid-cols-3 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Fecha de Suscripción
+                        Fecha Suscripción
                       </label>
                       <Input
                         type="date"
@@ -829,7 +851,7 @@ const confirmarActualizacion = async () => {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Fecha de Inicio <span className="text-danger">*</span>
+                        Fecha Inicio <span className="text-danger">*</span>
                       </label>
                       <Input
                         type="date"
@@ -842,7 +864,7 @@ const confirmarActualizacion = async () => {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Fecha de Finalización <span className="text-danger">*</span>
+                        Fecha Finalización <span className="text-danger">*</span>
                       </label>
                       <Input
                         type="date"
@@ -854,53 +876,32 @@ const confirmarActualizacion = async () => {
                     </div>
                   </div>
 
-                  {duration.years > 0 || duration.months > 0 || duration.days > 0 ? (
-                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                        Duración del proyecto:{" "}
-                        <span className="font-bold">
-                          {duration.years > 0 && `${duration.years} año${duration.years !== 1 ? "s" : ""} `}
-                          {duration.months > 0 && `${duration.months} mes${duration.months !== 1 ? "es" : ""} `}
-                          {duration.days > 0 && `${duration.days} día${duration.days !== 1 ? "s" : ""}`}
-                        </span>
+                  {(duration.years > 0 || duration.months > 0 || duration.days > 0) && (
+                    <div className="bg-primary/5 p-4 rounded-lg">
+                      <p className="text-sm font-medium text-primary">
+                        Duración Total:{' '}
+                        {duration.years > 0 && `${duration.years} año${duration.years !== 1 ? 's' : ''} `}
+                        {duration.months > 0 && `${duration.months} mes${duration.months !== 1 ? 'es' : ''} `}
+                        {duration.days > 0 && `${duration.days} día${duration.days !== 1 ? 's' : ''}`}
                       </p>
                     </div>
-                  ) : null}
+                  )}
                 </CardContent>
               </Card>
 
-              {/* RESPONSABLES Y CONTACTO */}
+              {/* CONTACTOS */}
               <Card>
                 <CardContent className="p-6 space-y-5">
                   <div className="flex items-center gap-3 pb-3 border-b">
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
-                      👤
+                      📧
                     </div>
-                    <h2 className="text-xl font-semibold">Responsables y Contacto</h2>
+                    <h2 className="text-xl font-semibold">Información de Contacto</h2>
                   </div>
 
                   <div>
                     <label className="text-sm font-medium block mb-2">
-                      Funcionario Ordenador <span className="text-danger">*</span>
-                    </label>
-                    <Select
-                      name="funcionario_ordenador_id"
-                      value={formData.funcionario_ordenador_id}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Seleccione...</option>
-                      {officials?.map((official) => (
-                        <option key={official.id} value={official.id}>
-                          {official.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium block mb-2">
-                      Correo Principal del Proyecto
+                      Correo Principal
                     </label>
                     <Input
                       type="email"
@@ -908,15 +909,24 @@ const confirmarActualizacion = async () => {
                       value={formData.correo_principal}
                       onChange={handleInputChange}
                       maxLength={200}
-                      placeholder="proyecto@udistrital.edu.co"
+                      placeholder="ejemplo@udistrital.edu.co"
                     />
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium block mb-2">
-                      Correos Secundarios
-                    </label>
-                    <div className="space-y-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium">Correos Secundarios</label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={agregarCorreo}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Agregar
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
                       {correosSecundarios.map((correo, index) => (
                         <div key={index} className="flex gap-2">
                           <Input
@@ -924,10 +934,11 @@ const confirmarActualizacion = async () => {
                             value={correo}
                             onChange={(e) => actualizarCorreo(index, e.target.value)}
                             placeholder="correo@ejemplo.com"
+                            maxLength={200}
                           />
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
                             onClick={() => eliminarCorreo(index)}
                           >
@@ -935,42 +946,33 @@ const confirmarActualizacion = async () => {
                           </Button>
                         </div>
                       ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={agregarCorreo}
-                        className="w-full"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Agregar Correo Secundario
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* CÓDIGOS RUP */}
-                <Card>
+              <Card>
                 <CardContent className="p-6 space-y-5">
-                    <div className="flex items-center gap-3 pb-3 border-b">
+                  <div className="flex items-center gap-3 pb-3 border-b">
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
-                        🏷️
+                      🏷️
                     </div>
-                    <div>
-                        <h2 className="text-xl font-semibold">Códigos RUP</h2>
-                        <p className="text-sm text-text-secondary">
-                        Clasificación según el Registro Único de Proponentes (opcional)
-                        </p>
+                    <div className="flex-1">
+                      <h2 className="text-xl font-semibold">Códigos RUP</h2>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Asigna códigos de clasificación presupuestal al proyecto
+                      </p>
                     </div>
-                    </div>
+                  </div>
 
-                    <RupCodeSelector
+                  <RupCodeSelector
                     allRupCodes={rupCodes || []}
                     selectedRupCodes={selectedRupCodes}
                     onSelectionChange={setSelectedRupCodes}
-                    />
+                  />
                 </CardContent>
-                </Card>
+              </Card>
 
               {/* DOCUMENTACIÓN */}
               <Card>
@@ -979,7 +981,7 @@ const confirmarActualizacion = async () => {
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
                       📄
                     </div>
-                    <h2 className="text-xl font-semibold">Documentación</h2>
+                    <h2 className="text-xl font-semibold">Documentación Adicional</h2>
                   </div>
 
                   <div>
@@ -991,7 +993,7 @@ const confirmarActualizacion = async () => {
                       value={formData.acto_administrativo}
                       onChange={handleInputChange}
                       maxLength={50}
-                      placeholder="Ej: Agreement 001-2024"
+                      placeholder="Ej: Acuerdo 001-2024"
                     />
                   </div>
 
@@ -1026,6 +1028,7 @@ const confirmarActualizacion = async () => {
                   </div>
                 </CardContent>
               </Card>
+
             </form>
           </div>
 
@@ -1034,106 +1037,99 @@ const confirmarActualizacion = async () => {
             <div className="sticky top-24 space-y-4">
               <Card className="border-2 border-primary/20">
                 <CardContent className="p-6 space-y-6">
+                  {/* Header */}
                   <div className="flex items-center gap-3 pb-4 border-b">
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
                       📊
                     </div>
-                    <h3 className="text-lg font-semibold">Vista Previa</h3>
+                    <h3 className="text-lg font-semibold">Vista Previa del Proyecto</h3>
                   </div>
 
+                  {/* Nombre */}
                   <div>
-                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">
-                      NOMBRE
-                    </p>
+                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">NOMBRE</p>
                     <p className="text-base font-medium">
                       {formData.nombre_proyecto || "Sin especificar"}
                     </p>
                   </div>
 
+                  {/* Año */}
                   <div>
-                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">
-                      AÑO
-                    </p>
-                    <p className="text-2xl font-bold text-primary">
-                      {formData.anio_proyecto}
-                    </p>
+                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">AÑO</p>
+                    <p className="text-2xl font-bold text-primary">{formData.anio_proyecto}</p>
                   </div>
 
+                  {/* Valor Total */}
                   <div>
-                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">
-                      VALOR TOTAL
-                    </p>
+                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">VALOR TOTAL</p>
                     <p className="text-2xl font-bold text-warning">
-                      {valorTotal > 0 ? formatCurrency(valorTotal) : "$0"}
+                      {valorTotal > 0 ? formatCurrency(valorTotal) : "$ 0"}
                     </p>
                   </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-text-secondary">Beneficio Inst.</span>
-                        <span className="font-medium">
-                          {beneficioInst > 0 ? formatCurrency(beneficioInst) : "$0"}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-[#FF9800] h-2 rounded-full"
-                          style={{ width: `${porcentajeBeneficio}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                  {/* Beneficio Institucional */}
+                  <div>
+                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">BENEFICIO INSTITUCIONAL</p>
+                    <p className="text-xl font-bold">
+                      {beneficioInst > 0 ? formatCurrency(beneficioInst) : "$ 0"}
+                    </p>
+                  </div>
 
+                  {/* Duración */}
+                  {(duration.years > 0 || duration.months > 0 || duration.days > 0) && (
                     <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-text-secondary">Aporte Entidad</span>
-                        <span className="font-medium">
-                          {aporteEntidad > 0 ? formatCurrency(aporteEntidad) : "$0"}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-success h-2 rounded-full"
-                          style={{ width: `${porcentajeEntidad}%` }}
-                        ></div>
-                      </div>
+                      <p className="text-xs font-medium text-text-secondary uppercase mb-2">DURACIÓN</p>
+                      <p className="text-base font-semibold text-info">
+                        {duration.years > 0 && `${duration.years} año${duration.years !== 1 ? 's' : ''} `}
+                        {duration.months > 0 && `${duration.months} mes${duration.months !== 1 ? 'es' : ''} `}
+                        {duration.days > 0 && `${duration.days} día${duration.days !== 1 ? 's' : ''}`}
+                      </p>
                     </div>
+                  )}
 
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-text-secondary">Aporte Univ.</span>
-                        <span className="font-medium">
-                          {aporteUniv > 0 ? formatCurrency(aporteUniv) : "$0"}
-                        </span>
+                  {/* Distribución Presupuestal */}
+                  <div>
+                    <p className="text-xs font-medium text-text-secondary uppercase mb-2">DISTRIBUCIÓN PRESUPUESTAL</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-sm bg-[#FF9800]"></div>
+                          <span className="text-sm">Beneficio Inst.</span>
+                        </div>
+                        <span className="text-sm font-medium">{porcentajeBeneficio.toFixed(1)}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-info h-2 rounded-full"
-                          style={{ width: `${porcentajeUniv}%` }}
-                        ></div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-sm bg-success"></div>
+                          <span className="text-sm">Aporte Entidad</span>
+                        </div>
+                        <span className="text-sm font-medium">{porcentajeEntidad.toFixed(1)}%</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-sm bg-info"></div>
+                          <span className="text-sm">Aporte Univ.</span>
+                        </div>
+                        <span className="text-sm font-medium">{porcentajeUniv.toFixed(1)}%</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-sm bg-warning"></div>
+                          <span className="text-sm">Otros</span>
+                        </div>
+                        <span className="text-sm font-medium">{porcentajeOtros.toFixed(1)}%</span>
                       </div>
                     </div>
                   </div>
 
-                  {duration.years > 0 || duration.months > 0 || duration.days > 0 ? (
-                    <div className="bg-primary/5 p-3 rounded-lg">
-                      <p className="text-xs font-medium text-text-secondary uppercase mb-1">
-                        DURACIÓN
-                      </p>
-                      <p className="text-sm font-semibold text-primary">
-                        {duration.years > 0 &&
-                          `${duration.years} año${duration.years !== 1 ? "s" : ""} `}
-                        {duration.months > 0 &&
-                          `${duration.months} mes${duration.months !== 1 ? "es" : ""} `}
-                        {duration.days > 0 &&
-                          `${duration.days} día${duration.days !== 1 ? "s" : ""}`}
-                      </p>
-                    </div>
-                  ) : null}
                 </CardContent>
               </Card>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -1145,12 +1141,11 @@ const confirmarActualizacion = async () => {
               📋
             </div>
             <DialogTitle className="text-center text-2xl">
-              ¿Confirmar actualización?
+              ¿Confirmar actualización del proyecto?
             </DialogTitle>
           </DialogHeader>
           <p className="text-center text-text-secondary">
-            Está a punto de actualizar la información de este proyecto. Por favor
-            verifique que los cambios sean correctos.
+            Está a punto de actualizar la información de este proyecto. Por favor verifique que los cambios sean correctos.
           </p>
           <DialogFooter className="flex justify-center gap-3">
             <Button
@@ -1163,11 +1158,20 @@ const confirmarActualizacion = async () => {
             </Button>
             <Button onClick={confirmarActualizacion} disabled={isUpdating}>
               <Save className="h-4 w-4 mr-2" />
-              {isUpdating ? "Actualizando..." : "Sí, Actualizar"}
+              {isUpdating ? "Actualizando..." : "Sí, Actualizar Proyecto"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ✅ DIALOG DE MODIFICACIONES */}
+      {project && (
+        <ModificationsDialog
+          project={project}
+          open={showModifications}
+          onClose={() => setShowModifications(false)}
+        />
+      )}
     </div>
   )
 }

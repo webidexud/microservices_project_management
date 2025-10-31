@@ -1,5 +1,7 @@
 import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query" // ✅ FALTABA useMutation y useQueryClient
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query" 
+import { FileEdit } from "lucide-react" 
+import ModificationsDialog from "@/components/ModificationsDialog" 
 import { useNavigate } from "react-router-dom"
 import {
   Plus,
@@ -45,6 +47,8 @@ export default function Projects() {
   const [selectedProject, setSelectedProject] = useState(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState(null)
+  const [showModificationsDialog, setShowModificationsDialog] = useState(false)
+  const [selectedProjectForModifications, setSelectedProjectForModifications] = useState(null)
   
   const navigate = useNavigate()
   const queryClient = useQueryClient() // ✅ Moverlo después de los estados
@@ -102,6 +106,11 @@ export default function Projects() {
   const handleDeleteProject = (project) => {
     setProjectToDelete(project)
     setShowDeleteDialog(true)
+  }
+
+  const handleOpenModifications = (project) => {
+    setSelectedProjectForModifications(project)
+    setShowModificationsDialog(true)
   }
 
   // ✅ FALTABA esta función
@@ -283,7 +292,6 @@ export default function Projects() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {/* ✅ AGREGAR onClick */}
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -291,13 +299,20 @@ export default function Projects() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {/* ✅ AGREGAR onClick */}
                         <Button 
                           variant="ghost" 
                           size="icon"
                           onClick={() => handleDeleteProject(project)}
                         >
                           <Trash2 className="h-4 w-4 text-danger" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenModifications(project)}
+                          title="Modificaciones"
+                        >
+                          <FileEdit className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -318,6 +333,16 @@ export default function Projects() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog Modificaciones */}
+      <ModificationsDialog
+        project={selectedProjectForModifications}
+        open={showModificationsDialog}
+        onClose={() => {
+          setShowModificationsDialog(false)
+          setSelectedProjectForModifications(null)
+        }}
+      />
 
       {/* Dialog Detalle de Proyecto */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
