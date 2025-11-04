@@ -9,6 +9,7 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import ConnectionTest from './pages/ConnectionTest'
 import EditProject from './pages/EditProject'
+import ProjectView from './pages/ProjectView'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/create" element={<CreateProject />} />
+            <Route path="projects/view/:id" element={<ProjectView />} />
             <Route path="catalogs/*" element={<Catalogs />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />

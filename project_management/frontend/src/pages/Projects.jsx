@@ -95,8 +95,7 @@ export default function Projects() {
   }
 
   const handleViewProject = (project) => {
-    setSelectedProject(project)
-    setShowDetailDialog(true)
+    navigate(`/projects/view/${project.id}`)
   }
 
   const handleEditProject = (project) => {
