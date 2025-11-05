@@ -63,7 +63,7 @@ export default function ProjectView() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-neutral-600 dark:text-neutral-400">Cargando proyecto...</p>
+          <p className="mt-4 text-text-secondary">Cargando proyecto...</p>
         </div>
       </div>
     )
@@ -73,10 +73,8 @@ export default function ProjectView() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
-          <p className="text-xl font-semibold text-neutral-700 dark:text-neutral-300">
-            Proyecto no encontrado
-          </p>
+          <AlertCircle className="h-12 w-12 text-danger mx-auto mb-4" />
+          <p className="text-lg font-medium">Proyecto no encontrado</p>
           <Button onClick={() => navigate("/projects")} className="mt-4">
             Volver a Proyectos
           </Button>
@@ -85,32 +83,29 @@ export default function ProjectView() {
     )
   }
 
-  // Calcular duración del proyecto
-  const calculateDuration = (startDate, endDate) => {
-    if (!startDate || !endDate) return null
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const diffTime = Math.abs(end - start)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  // Calcular duración total (con prórrogas)
+  const calculateTotalDuration = () => {
+    const start = new Date(project.start_date)
+    const finalEnd = new Date(project.final_end_date_with_extensions || project.end_date)
+    const diffTime = Math.abs(finalEnd - start)
+    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     
-    const years = Math.floor(diffDays / 365)
-    const months = Math.floor((diffDays % 365) / 30)
-    const days = diffDays % 30
+    const years = Math.floor(totalDays / 365)
+    const months = Math.floor((totalDays % 365) / 30)
+    const days = (totalDays % 365) % 30
     
-    return { years, months, days, totalDays: diffDays }
+    return { years, months, days, totalDays }
   }
 
-  const duration = calculateDuration(project.start_date, project.end_date)
-  const totalExtensionDays = modificationsSummary?.total_extension_days || 0
-  const totalValue = parseFloat(project.project_value || 0)
-  const totalModifications = parseFloat(modificationsSummary?.total_additions || 0)
-  const finalValue = totalValue + totalModifications
+  const duration = calculateTotalDuration()
+  const totalExtensionDays = project.total_extension_days || 0
 
-  // Progreso del proyecto
+  // Calcular progreso
   const calculateProgress = () => {
-    if (!project.start_date || !project.end_date) return 0
+    if (!project.start_date || !project.final_end_date_with_extensions) return 0
+    
     const start = new Date(project.start_date)
-    const end = new Date(project.end_date)
+    const end = new Date(project.final_end_date_with_extensions)
     const today = new Date()
     
     if (today < start) return 0
@@ -125,7 +120,8 @@ export default function ProjectView() {
 
   const getStatusColor = (status) => {
     const colors = {
-      "En ejecución": "info",
+      "In Progress": "info",
+      "Completed": "success",
       "Por iniciar": "warning",
       "Finalizado": "success",
       "Suspendido": "danger",
@@ -149,6 +145,76 @@ export default function ProjectView() {
     { id: "timeline", label: "Línea de Tiempo", icon: Calendar },
   ]
 
+  // Crear eventos de timeline ordenados de más reciente a más antiguo
+  const createTimelineEvents = () => {
+    const events = []
+    
+    // Agregar suscripción
+    if (project.subscription_date) {
+      events.push({
+        date: new Date(project.subscription_date),
+        type: 'subscription',
+        title: 'Suscripción del Proyecto',
+        icon: FileText,
+        color: 'info',
+        description: formatDate(project.subscription_date)
+      })
+    }
+    
+    // Agregar inicio
+    events.push({
+      date: new Date(project.start_date),
+      type: 'start',
+      title: 'Inicio del Proyecto',
+      icon: Calendar,
+      color: 'success',
+      description: formatDate(project.start_date)
+    })
+    
+    // Agregar modificaciones
+    if (modifications && modifications.length > 0) {
+      modifications.forEach(mod => {
+        events.push({
+          date: new Date(mod.created_at),
+          type: 'modification',
+          title: `Modificación #${mod.number}`,
+          icon: FileEdit,
+          color: 'warning',
+          description: formatDate(mod.created_at),
+          details: mod
+        })
+      })
+    }
+    
+    // Agregar fecha final inicial
+    events.push({
+      date: new Date(project.end_date),
+      type: 'initial_end',
+      title: 'Fecha Final Inicial',
+      icon: Clock,
+      color: 'neutral',
+      description: formatDate(project.end_date)
+    })
+    
+    // Agregar fecha final con prórrogas (si es diferente)
+    if (project.final_end_date_with_extensions && 
+        project.final_end_date_with_extensions !== project.end_date) {
+      events.push({
+        date: new Date(project.final_end_date_with_extensions),
+        type: 'final_end',
+        title: 'Fecha Final con Prórrogas',
+        icon: Target,
+        color: 'primary',
+        description: formatDate(project.final_end_date_with_extensions)
+      })
+    }
+    
+    // Ordenar por fecha descendente (más reciente primero)
+    return events.sort((a, b) => b.date - a.date)
+  }
+
+  const timelineEvents = createTimelineEvents()
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       {/* Header Simple */}
@@ -166,14 +232,14 @@ export default function ProjectView() {
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-                    {project.code}
+                    {project.project_name}
                   </h1>
-                  <Badge variant={getStatusColor(project.status)}>
-                    {project.status}
+                  <Badge variant={getStatusColor(project.status_name)}>
+                    {project.status_name}
                   </Badge>
                 </div>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                  {project.project_name}
+                  {project.code} {project.external_project_number && `• ${project.external_project_number}`}
                 </p>
               </div>
             </div>
@@ -183,36 +249,29 @@ export default function ProjectView() {
             </Button>
           </div>
 
-          {/* Métricas en el header */}
-          <div className="grid grid-cols-4 gap-4 mt-6">
+          {/* Métricas rápidas */}
+          <div className="grid grid-cols-3 gap-4 mt-6">
             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
               <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm mb-1">
-                <DollarSign className="h-4 w-4" />
-                <span>Valor Total</span>
+                <Clock className="h-4 w-4" />
+                <span>Cronograma</span>
               </div>
-              <p className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                {formatCurrency(finalValue)}
-              </p>
-              {totalModifications > 0 && (
-                <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
-                  +{formatCurrency(totalModifications)} modificaciones
-                </p>
-              )}
-            </div>
-
-            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
-              <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm mb-1">
-                <Calendar className="h-4 w-4" />
-                <span>Duración</span>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Estado</p>
+                  <Badge variant={getStatusColor(project.status_name)} className="mt-1">
+                    {project.status_name}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Duración Total</p>
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mt-1">
+                    {duration.years > 0 && `${duration.years}a `}
+                    {duration.months > 0 && `${duration.months}m `}
+                    {duration.days}d
+                  </p>
+                </div>
               </div>
-              <p className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                {duration ? `${duration.totalDays} días` : "N/A"}
-              </p>
-              {totalExtensionDays > 0 && (
-                <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
-                  +{totalExtensionDays} días extendidos
-                </p>
-              )}
             </div>
 
             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
@@ -296,7 +355,7 @@ export default function ProjectView() {
                       <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
                         Código
                       </label>
-                      <p className="text-base font-medium mt-1">{project.code}</p>
+                      <p className="text-base font-medium mt-1">{project.project_id || 'N/A'}</p>
                     </div>
 
                     <div>
@@ -356,7 +415,9 @@ export default function ProjectView() {
                         <Building2 className="h-3 w-3" />
                         Entidad
                       </label>
-                      <p className="text-sm font-medium mt-2">{project.entity}</p>
+                      <p className="text-sm font-medium mt-2">
+                        {project.entity_name || 'N/A'}
+                      </p>
                     </div>
 
                     <div>
@@ -364,54 +425,217 @@ export default function ProjectView() {
                         <Briefcase className="h-3 w-3" />
                         Dependencia Ejecutora
                       </label>
-                      <p className="text-sm font-medium mt-2">{project.department}</p>
+                      <p className="text-sm font-medium mt-2">
+                        {project.department_name || 'N/A'}
+                      </p>
                     </div>
 
-                    <div>
+                    <div className="col-span-2">
                       <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
                         <Users className="h-3 w-3" />
                         Funcionario Ordenador
                       </label>
                       <p className="text-sm font-medium mt-2">
-                        {project.ordering_official}
+                        {project.ordering_official_name || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Clasificación */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    Clasificación
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                        Tipo de Proyecto
+                      </label>
+                      <p className="text-sm font-medium mt-1">
+                        {project.project_type || 'N/A'}
                       </p>
                     </div>
 
-                    {project.beneficiaries_count && (
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                        Tipo de Financiación
+                      </label>
+                      <p className="text-sm font-medium mt-1">
+                        {project.financing_type || 'N/A'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                        Modalidad de Ejecución
+                      </label>
+                      <p className="text-sm font-medium mt-1">
+                        {project.execution_modality || 'N/A'}
+                      </p>
+                    </div>
+
+                    {project.contracting_modality && (
                       <div>
                         <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                          Beneficiarios
+                          Modalidad Contratación
                         </label>
-                        <p className="text-sm font-medium mt-2">
-                          {project.beneficiaries_count} personas
+                        <p className="text-sm font-medium mt-1">
+                          {project.contracting_modality}
+                        </p>
+                      </div>
+                    )}
+
+                    {project.accounting_code && (
+                      <div>
+                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                          Código Contable
+                        </label>
+                        <p className="text-sm font-mono mt-1">
+                          {project.accounting_code}
                         </p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Columna lateral */}
+            <div className="space-y-6">
+              {/* Cronograma */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    Cronograma
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                      Estado del Proyecto
+                    </label>
+                    <Badge variant={getStatusColor(project.status_name)} className="mt-2">
+                      {project.status_name}
+                    </Badge>
+                  </div>
+
+                  {project.subscription_date && (
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                        Fecha de Suscripción
+                      </label>
+                      <p className="text-sm font-medium mt-1">
+                        {formatDate(project.subscription_date)}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                      Fecha de Inicio
+                    </label>
+                    <p className="text-sm font-medium mt-1">
+                      {formatDate(project.start_date)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                      Fecha Final Inicial
+                    </label>
+                    <p className="text-sm font-medium mt-1">
+                      {formatDate(project.end_date)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                      Fecha Final con Prórrogas
+                    </label>
+                    <p className="text-sm font-medium mt-1">
+                      {formatDate(project.final_end_date_with_extensions || project.end_date)}
+                    </p>
+                    {totalExtensionDays > 0 && (
+                      <p className="text-xs text-success mt-1">
+                        +{totalExtensionDays} días extendidos
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                      Duración Total
+                    </label>
+                    <p className="text-base font-semibold mt-1">
+                      {duration.years > 0 && `${duration.years} año${duration.years > 1 ? 's' : ''} `}
+                      {duration.months > 0 && `${duration.months} mes${duration.months > 1 ? 'es' : ''} `}
+                      {duration.days} día{duration.days !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      ({duration.totalDays} días totales)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Contacto */}
-              {(project.main_email || project.secop_link || project.administrative_act) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-primary" />
+                    Contacto
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {project.main_email && (
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                        Email Principal
+                      </label>
+                      <p className="text-sm mt-1">{project.main_email}</p>
+                    </div>
+                  )}
+
+                  {project.secondary_emails && project.secondary_emails.length > 0 && (
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                        Emails Secundarios
+                      </label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {project.secondary_emails.map((email, index) => (
+                          <Badge key={index} variant="outline">
+                            {email}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Enlaces */}
+              {(project.administrative_act || project.secop_link) && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <Mail className="h-5 w-5 text-primary" />
-                      Información de Contacto
+                      <LinkIcon className="h-5 w-5 text-primary" />
+                      Enlaces
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {project.main_email && (
+                    {project.administrative_act && (
                       <div>
                         <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                          Email
+                          Acto Administrativo
                         </label>
-                        <a
-                          href={`mailto:${project.main_email}`}
-                          className="text-sm text-primary hover:underline block mt-1"
-                        >
-                          {project.main_email}
-                        </a>
+                        <p className="text-sm mt-1">{project.administrative_act}</p>
                       </div>
                     )}
 
@@ -424,152 +648,15 @@ export default function ProjectView() {
                           href={project.secop_link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-primary hover:underline block mt-1 break-all"
+                          className="text-sm text-primary hover:underline mt-1 block"
                         >
-                          {project.secop_link}
+                          Ver en SECOP →
                         </a>
-                      </div>
-                    )}
-
-                    {project.administrative_act && (
-                      <div>
-                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                          Acto Administrativo
-                        </label>
-                        <p className="text-sm font-medium mt-1">
-                          {project.administrative_act}
-                        </p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
               )}
-            </div>
-
-            {/* Columna lateral */}
-            <div className="space-y-6">
-              {/* Fechas */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-primary" />
-                    Cronograma
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Estado
-                    </label>
-                    <div className="mt-2">
-                      <Badge variant={getStatusColor(project.status)} className="text-sm">
-                        {project.status}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4">
-                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Inicio
-                    </label>
-                    <p className="text-base font-medium mt-1">
-                      {formatDate(project.start_date)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Finalización
-                    </label>
-                    <p className="text-base font-medium mt-1">
-                      {formatDate(project.end_date)}
-                    </p>
-                  </div>
-
-                  {project.subscription_date && (
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Suscripción
-                      </label>
-                      <p className="text-sm mt-1">
-                        {formatDate(project.subscription_date)}
-                      </p>
-                    </div>
-                  )}
-
-                  {duration && (
-                    <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4">
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Duración Total
-                      </label>
-                      <p className="text-sm font-medium mt-1">
-                        {duration.years > 0 && `${duration.years} año${duration.years !== 1 ? "s" : ""} `}
-                        {duration.months > 0 && `${duration.months} mes${duration.months !== 1 ? "es" : ""} `}
-                        {duration.days > 0 && `${duration.days} día${duration.days !== 1 ? "s" : ""}`}
-                      </p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                        {duration.totalDays} días totales
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Clasificación */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Clasificación
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Tipo
-                    </label>
-                    <p className="text-sm font-medium mt-1">{project.type}</p>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Financiación
-                    </label>
-                    <p className="text-sm font-medium mt-1">{project.financing}</p>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Modalidad Ejecución
-                    </label>
-                    <p className="text-sm font-medium mt-1">
-                      {project.execution_modality}
-                    </p>
-                  </div>
-
-                  {project.contracting_modality && (
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Modalidad Contratación
-                      </label>
-                      <p className="text-sm font-medium mt-1">
-                        {project.contracting_modality}
-                      </p>
-                    </div>
-                  )}
-
-                  {project.accounting_code && (
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Código Contable
-                      </label>
-                      <p className="text-sm font-mono mt-1">
-                        {project.accounting_code}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
           </div>
         )}
@@ -585,7 +672,7 @@ export default function ProjectView() {
                     Valor Original
                   </p>
                   <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-                    {formatCurrency(totalValue)}
+                    {formatCurrency(project.project_value)}
                   </p>
                 </CardContent>
               </Card>
@@ -593,13 +680,12 @@ export default function ProjectView() {
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-                    Modificaciones
+                    Adiciones
                   </p>
                   <p className="text-2xl font-semibold text-success">
-                    +{formatCurrency(totalModifications)}
-                  </p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                    {modificationsSummary?.total_modifications || 0} registradas
+                    {modificationsSummary
+                      ? formatCurrency(modificationsSummary.total_additions)
+                      : formatCurrency(0)}
                   </p>
                 </CardContent>
               </Card>
@@ -607,10 +693,12 @@ export default function ProjectView() {
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-                    Valor Final
+                    Valor Total Actual
                   </p>
                   <p className="text-2xl font-semibold text-primary">
-                    {formatCurrency(finalValue)}
+                    {modificationsSummary
+                      ? formatCurrency(modificationsSummary.final_total_value)
+                      : formatCurrency(project.project_value)}
                   </p>
                 </CardContent>
               </Card>
@@ -618,67 +706,60 @@ export default function ProjectView() {
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-                    Incremento
+                    Beneficiarios
                   </p>
-                  <p className="text-2xl font-semibold text-info">
-                    {totalValue > 0
-                      ? `+${((totalModifications / totalValue) * 100).toFixed(1)}%`
-                      : "0%"}
+                  <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+                    {project.beneficiaries_count?.toLocaleString() || 0}
                   </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Detalle de Aportes */}
+            {/* Distribución de Valores */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Distribución Presupuestal</CardTitle>
+                <CardTitle className="text-lg font-semibold">
+                  Distribución de Valores
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+              <CardContent>
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Beneficio Institucional ({project.institutional_benefit_percentage}%)
-                    </p>
-                    <p className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mt-1">
+                    <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                      Beneficio Institucional
+                    </label>
+                    <p className="text-2xl font-semibold mt-2">
                       {formatCurrency(project.institutional_benefit_value)}
                     </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                  <div>
-                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Aporte de la Entidad
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                      {project.institutional_benefit_percentage}%
                     </p>
-                    <p className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mt-1">
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                      Aporte Entidad
+                    </label>
+                    <p className="text-2xl font-semibold mt-2">
                       {formatCurrency(project.entity_contribution)}
                     </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Porcentaje</p>
-                    <p className="text-lg font-semibold text-neutral-700 dark:text-neutral-300">
-                      {totalValue > 0
-                        ? `${((project.entity_contribution / totalValue) * 100).toFixed(1)}%`
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                      {project.project_value > 0
+                        ? `${((project.entity_contribution / project.project_value) * 100).toFixed(1)}%`
                         : "0%"}
                     </p>
                   </div>
-                </div>
 
-                <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
                   <div>
-                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Aporte de la Universidad
-                    </p>
-                    <p className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mt-1">
+                    <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                      Aporte Universidad
+                    </label>
+                    <p className="text-2xl font-semibold mt-2">
                       {formatCurrency(project.university_contribution)}
                     </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Porcentaje</p>
-                    <p className="text-lg font-semibold text-neutral-700 dark:text-neutral-300">
-                      {totalValue > 0
-                        ? `${((project.university_contribution / totalValue) * 100).toFixed(1)}%`
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                      {project.project_value > 0
+                        ? `${((project.university_contribution / project.project_value) * 100).toFixed(1)}%`
                         : "0%"}
                     </p>
                   </div>
@@ -750,55 +831,39 @@ export default function ProjectView() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-16">#</TableHead>
+                        <TableHead>#</TableHead>
                         <TableHead>Tipo</TableHead>
-                        <TableHead>Valor Adición</TableHead>
-                        <TableHead>Extensión</TableHead>
-                        <TableHead>Nueva Fecha</TableHead>
-                        <TableHead>Justificación</TableHead>
-                        <TableHead>Acto Admin.</TableHead>
-                        <TableHead>Fecha Aprob.</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Adición</TableHead>
+                        <TableHead>Días Extendidos</TableHead>
+                        <TableHead>Nueva Fecha Fin</TableHead>
+                        <TableHead>Aprobación</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {modifications.map((mod) => {
                         const badge = getModificationBadge(mod.type)
                         return (
-                          <TableRow key={mod.id}>
-                            <TableCell className="font-semibold">#{mod.number}</TableCell>
+                          <TableRow key={mod.modification_id}>
+                            <TableCell className="font-medium">
+                              {mod.number}
+                            </TableCell>
                             <TableCell>
                               <Badge variant={badge.variant}>{badge.label}</Badge>
                             </TableCell>
+                            <TableCell>{formatDate(mod.created_at)}</TableCell>
                             <TableCell>
-                              {mod.addition_value ? (
-                                <span className="font-medium text-success">
-                                  +{formatCurrency(mod.addition_value)}
-                                </span>
-                              ) : (
-                                "-"
-                              )}
+                              {mod.addition_value > 0
+                                ? formatCurrency(mod.addition_value)
+                                : "-"}
                             </TableCell>
                             <TableCell>
-                              {mod.extension_days ? (
-                                <span className="font-medium text-info">
-                                  +{mod.extension_days} días
-                                </span>
-                              ) : (
-                                "-"
-                              )}
+                              {mod.extension_days > 0 ? `+${mod.extension_days}` : "-"}
                             </TableCell>
                             <TableCell>
                               {mod.new_end_date ? formatDate(mod.new_end_date) : "-"}
                             </TableCell>
                             <TableCell>
-                              <p className="max-w-md truncate text-sm">
-                                {mod.justification}
-                              </p>
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {mod.administrative_act || "-"}
-                            </TableCell>
-                            <TableCell className="text-sm">
                               {mod.approval_date ? formatDate(mod.approval_date) : "-"}
                             </TableCell>
                           </TableRow>
@@ -824,7 +889,12 @@ export default function ProjectView() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Línea de Tiempo del Proyecto</CardTitle>
+                <CardTitle className="text-lg font-semibold">
+                  Línea de Tiempo del Proyecto
+                </CardTitle>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                  Eventos ordenados de más reciente a más antiguo
+                </p>
               </CardHeader>
               <CardContent>
                 <div className="relative">
@@ -832,142 +902,46 @@ export default function ProjectView() {
                   <div className="absolute left-8 top-0 bottom-0 w-px bg-neutral-200 dark:bg-neutral-700"></div>
 
                   <div className="space-y-8">
-                    {/* Suscripción */}
-                    {project.subscription_date && (
-                      <div className="relative flex gap-6">
-                        <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-info/10 border-2 border-info">
-                          <FileText className="h-6 w-6 text-info" />
-                        </div>
-                        <div className="flex-1 pt-3">
-                          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
-                            Suscripción del Proyecto
-                          </h3>
-                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                            {formatDate(project.subscription_date)}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Inicio */}
-                    <div className="relative flex gap-6">
-                      <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-success/10 border-2 border-success">
-                        <Calendar className="h-6 w-6 text-success" />
-                      </div>
-                      <div className="flex-1 pt-3">
-                        <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
-                          Inicio de Ejecución
-                        </h3>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                          {formatDate(project.start_date)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Modificaciones */}
-                    {modifications &&
-                      modifications.map((mod) => (
-                        <div key={mod.id} className="relative flex gap-6">
-                          <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-warning/10 border-2 border-warning">
-                            <FileEdit className="h-6 w-6 text-warning" />
+                    {timelineEvents.map((event, index) => {
+                      const Icon = event.icon
+                      const colorClasses = {
+                        info: 'bg-info/10 border-info text-info',
+                        success: 'bg-success/10 border-success text-success',
+                        warning: 'bg-warning/10 border-warning text-warning',
+                        neutral: 'bg-neutral-100 border-neutral-300 text-neutral-600',
+                        primary: 'bg-primary/10 border-primary text-primary',
+                      }
+                      
+                      return (
+                        <div key={index} className="relative flex gap-6">
+                          <div className={`relative z-10 flex h-16 w-16 items-center justify-center rounded-full border-2 ${colorClasses[event.color]}`}>
+                            <Icon className="h-6 w-6" />
                           </div>
                           <div className="flex-1 pt-3">
                             <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
-                              Modificación #{mod.number}
+                              {event.title}
                             </h3>
                             <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                              {mod.approval_date
-                                ? formatDate(mod.approval_date)
-                                : "Sin fecha de aprobación"}
+                              {event.description}
                             </p>
-                            <div className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 space-y-1">
-                              {mod.addition_value && (
-                                <p>Adición: +{formatCurrency(mod.addition_value)}</p>
-                              )}
-                              {mod.extension_days && (
-                                <p>Prórroga: +{mod.extension_days} días</p>
-                              )}
-                            </div>
+                            {event.details && (
+                              <div className="mt-2 text-sm text-neutral-500 dark:text-neutral-500">
+                                {event.details.addition_value > 0 && (
+                                  <p>Adición: {formatCurrency(event.details.addition_value)}</p>
+                                )}
+                                {event.details.extension_days > 0 && (
+                                  <p>Prórroga: +{event.details.extension_days} días</p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      ))}
-
-                    {/* Finalización */}
-                    <div className="relative flex gap-6">
-                      <div
-                        className={`relative z-10 flex h-16 w-16 items-center justify-center rounded-full border-2 ${
-                          project.status === "Finalizado"
-                            ? "bg-primary/10 border-primary"
-                            : "bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600"
-                        }`}
-                      >
-                        <Clock
-                          className={`h-6 w-6 ${
-                            project.status === "Finalizado"
-                              ? "text-primary"
-                              : "text-neutral-400"
-                          }`}
-                        />
-                      </div>
-                      <div className="flex-1 pt-3">
-                        <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
-                          Finalización {project.status === "Finalizado" ? "" : "Programada"}
-                        </h3>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                          {formatDate(modificationsSummary?.final_end_date || project.end_date)}
-                        </p>
-                      </div>
-                    </div>
+                      )
+                    })}
                   </div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Estadísticas */}
-            <div className="grid grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Tiempo Transcurrido</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-4xl font-semibold text-neutral-900 dark:text-neutral-100 mb-3">
-                    {progress}%
-                  </p>
-                  <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
-                    <div
-                      className="bg-primary rounded-full h-2"
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Duración Original</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-4xl font-semibold text-neutral-900 dark:text-neutral-100">
-                    {duration ? duration.totalDays : 0}
-                  </p>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">días</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Extensiones</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-4xl font-semibold text-neutral-900 dark:text-neutral-100">
-                    +{totalExtensionDays}
-                  </p>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    días adicionales
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         )}
       </div>

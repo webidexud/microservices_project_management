@@ -434,7 +434,7 @@ app.get('/api/project-types', async (req, res) => {
         type_name as name,
         is_active as active 
       FROM project_types 
-      ORDER BY project_type_id`
+      ORDER BY type_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -454,7 +454,7 @@ app.get('/api/project-types/active', async (req, res) => {
         is_active as active 
       FROM project_types 
       WHERE is_active = true 
-      ORDER BY type_name`
+      ORDER BY type_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -550,7 +550,7 @@ app.get('/api/financing-types', async (req, res) => {
         financing_name as name,
         is_active as active 
       FROM financing_types 
-      ORDER BY financing_type_id`
+      ORDER BY financing_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -668,7 +668,7 @@ app.get('/api/execution-modalities', async (req, res) => {
         modality_description as description, 
         is_active as active 
       FROM execution_modalities 
-      ORDER BY execution_modality_id`
+      ORDER BY modality_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -689,7 +689,7 @@ app.get('/api/execution-modalities/active', async (req, res) => {
         is_active as active 
       FROM execution_modalities 
       WHERE is_active = true 
-      ORDER BY modality_name`
+      ORDER BY modality_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -786,7 +786,7 @@ app.get('/api/contracting-modalities', async (req, res) => {
         modality_description as description, 
         is_active as active 
       FROM contracting_modalities 
-      ORDER BY contracting_modality_id`
+      ORDER BY modality_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -807,7 +807,7 @@ app.get('/api/contracting-modalities/active', async (req, res) => {
         is_active as active 
       FROM contracting_modalities 
       WHERE is_active = true 
-      ORDER BY modality_name`
+      ORDER BY modality_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -906,7 +906,7 @@ app.get('/api/project-states', async (req, res) => {
         status_description as description,
         is_active as active 
       FROM project_statuses 
-      ORDER BY status_order, status_id`
+      ORDER BY status_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -929,7 +929,7 @@ app.get('/api/project-states/active', async (req, res) => {
         is_active as active 
       FROM project_statuses 
       WHERE is_active = true 
-      ORDER BY status_order, status_id`
+      ORDER BY status_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -1037,7 +1037,7 @@ app.get('/api/officials', async (req, res) => {
         phone,
         is_active as active 
       FROM ordering_officials 
-      ORDER BY official_id`
+      ORDER BY first_name ASC, first_surname ASC`
     );
     client.release();
     res.json(result.rows);
@@ -1067,7 +1067,7 @@ app.get('/api/officials/active', async (req, res) => {
         is_active as active 
       FROM ordering_officials 
       WHERE is_active = true 
-      ORDER BY first_name`
+      ORDER BY first_name ASC, first_surname ASC`
     );
     client.release();
     res.json(result.rows);
@@ -1359,24 +1359,89 @@ app.get('/api/projects', async (req, res) => {
   }
 });
 
+
+// GET - Proyectos recientes
+app.get('/api/projects/recent', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT 
+        p.project_id as id,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
+        p.project_name as name,
+        p.project_value as value,
+        p.start_date,
+        p.end_date,
+        e.entity_name as entity,
+        ps.status_name as status,
+        ps.status_color as status_color
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      WHERE p.is_active = true
+      ORDER BY p.created_at DESC
+      LIMIT 5`
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener proyectos recientes:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// GET - Obtener un proyecto por ID
 // GET - Obtener un proyecto por ID
 app.get('/api/projects/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const client = await pool.connect();
     
-    // Obtener proyecto principal
+    // Obtener proyecto principal con TODOS los datos necesarios
     const projectResult = await client.query(
       `SELECT 
-        p.*,
+        p.project_id,
+        p.project_year,
+        p.internal_project_number,
+        p.external_project_number,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
+        p.project_name,
+        p.project_purpose,
+        p.entity_id,
+        p.executing_department_id,
+        p.project_status_id,
+        p.project_type_id,
+        p.financing_type_id,
+        p.execution_modality_id,
+        p.contracting_modality_id,
+        p.project_value,
+        p.accounting_code,
+        p.institutional_benefit_percentage,
+        p.institutional_benefit_value,
+        p.university_contribution,
+        p.entity_contribution,
+        p.beneficiaries_count,
+        p.subscription_date,
+        p.start_date,
+        p.end_date,
+        p.ordering_official_id,
+        p.main_email,
+        p.administrative_act,
+        p.secop_link,
+        p.observations,
+        p.is_active,
+        p.created_at,
+        p.updated_at,
+        -- Nombres de las relaciones desde sus tablas correspondientes
         e.entity_name,
         ed.department_name,
         ps.status_name,
-        pt.type_name,
-        ft.financing_name,
-        em.modality_name as execution_modality_name,
-        cm.modality_name as contracting_modality_name,
-        CONCAT(oo.first_name, ' ', oo.first_surname) as ordering_official_name
+        pt.type_name as project_type,
+        ft.financing_name as financing_type,
+        em.modality_name as execution_modality,
+        cm.modality_name as contracting_modality,
+        CONCAT(oo.first_name, ' ', COALESCE(oo.second_name || ' ', ''), oo.first_surname, ' ', COALESCE(oo.second_surname, '')) as ordering_official_name
       FROM projects p
       LEFT JOIN entities e ON p.entity_id = e.entity_id
       LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
@@ -1403,10 +1468,22 @@ app.get('/api/projects/:id', async (req, res) => {
       [id]
     );
     
+    // Obtener resumen de modificaciones para calcular fecha final con prórrogas
+    const modificationsResult = await client.query(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN modification_type IN ('EXTENSION', 'BOTH') THEN extension_days ELSE 0 END), 0) as total_extension_days,
+        MAX(new_end_date) as final_end_date_with_extensions
+      FROM project_modifications
+      WHERE project_id = $1 AND is_active = true`,
+      [id]
+    );
+    
     client.release();
     
     const project = projectResult.rows[0];
     project.secondary_emails = emailsResult.rows.map(row => row.email);
+    project.total_extension_days = parseInt(modificationsResult.rows[0]?.total_extension_days || 0);
+    project.final_end_date_with_extensions = modificationsResult.rows[0]?.final_end_date_with_extensions || project.end_date;
     
     res.json(project);
   } catch (error) {
@@ -1713,7 +1790,7 @@ app.get('/api/dashboard/charts', async (req, res) => {
        LEFT JOIN projects p ON ps.status_id = p.project_status_id AND p.is_active = true
        WHERE ps.is_active = true
        GROUP BY ps.status_id, ps.status_name, ps.status_color
-       ORDER BY ps.display_order`
+       ORDER BY ps.status_order`
     );
     
     // Proyectos por tipo
@@ -1754,35 +1831,6 @@ app.get('/api/dashboard/charts', async (req, res) => {
   }
 });
 
-// GET - Proyectos recientes
-app.get('/api/projects/recent', async (req, res) => {
-  try {
-    const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
-        p.project_id as id,
-        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
-        p.project_name as name,
-        p.project_value as value,
-        p.start_date,
-        p.end_date,
-        e.entity_name as entity,
-        ps.status_name as status,
-        ps.status_color as status_color
-      FROM projects p
-      LEFT JOIN entities e ON p.entity_id = e.entity_id
-      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
-      WHERE p.is_active = true
-      ORDER BY p.created_at DESC
-      LIMIT 5`
-    );
-    client.release();
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Error al obtener proyectos recientes:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 
 

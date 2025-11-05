@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { rupCodesApi } from "@/lib/api"
 import { FileEdit } from "lucide-react" 
 import ModificationsDialog from "@/components/ModificationsDialog" 
+import SearchableSelect from "@/components/SearchableSelect"
 import RupCodeSelector from "@/components/RupCodeSelector"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -555,38 +556,28 @@ export default function EditProject() {
                       <label className="text-sm font-medium block mb-2">
                         Entidad <span className="text-danger">*</span>
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="entidad_id"
                         value={formData.entidad_id}
                         onChange={handleInputChange}
+                        options={entities || []}
+                        placeholder="Seleccione una entidad..."
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {entities?.map((entity) => (
-                          <option key={entity.id} value={entity.id}>
-                            {entity.name}
-                          </option>
-                        ))}
-                      </Select>
+                      />
                     </div>
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Dependencia Ejecutora <span className="text-danger">*</span>
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="dependencia_ejecutora_id"
                         value={formData.dependencia_ejecutora_id}
                         onChange={handleInputChange}
+                        options={dependencies || []}
+                        placeholder="Seleccione una dependencia..."
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {dependencies?.map((dep) => (
-                          <option key={dep.id} value={dep.id}>
-                            {dep.name}
-                          </option>
-                        ))}
-                      </Select>
+                      />
                     </div>
                   </div>
                 </CardContent>
@@ -607,76 +598,56 @@ export default function EditProject() {
                       <label className="text-sm font-medium block mb-2">
                         Estado del Proyecto <span className="text-danger">*</span>
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="estado_proyecto_id"
                         value={formData.estado_proyecto_id}
                         onChange={handleInputChange}
+                        options={projectStates || []}
+                        placeholder="Seleccione un estado..."
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {projectStates?.map((state) => (
-                          <option key={state.id} value={state.id}>
-                            {state.name}
-                          </option>
-                        ))}
-                      </Select>
+                      />
                     </div>
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Tipo de Proyecto <span className="text-danger">*</span>
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="tipo_proyecto_id"
                         value={formData.tipo_proyecto_id}
                         onChange={handleInputChange}
+                        options={projectTypes || []}
+                        placeholder="Seleccione un tipo..."
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {projectTypes?.map((type) => (
-                          <option key={type.id} value={type.id}>
-                            {type.name}
-                          </option>
-                        ))}
-                      </Select>
+                      />
                     </div>
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Tipo de Financiación <span className="text-danger">*</span>
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="tipo_financiacion_id"
                         value={formData.tipo_financiacion_id}
                         onChange={handleInputChange}
+                        options={financingTypes || []}
+                        placeholder="Seleccione tipo de financiación..."
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {financingTypes?.map((type) => (
-                          <option key={type.id} value={type.id}>
-                            {type.name}
-                          </option>
-                        ))}
-                      </Select>
+                      />
                     </div>
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Funcionario Ordenador <span className="text-danger">*</span>
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="funcionario_ordenador_id"
                         value={formData.funcionario_ordenador_id}
                         onChange={handleInputChange}
+                        options={officials || []}
+                        placeholder="Seleccione funcionario ordenador..."
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {officials?.map((official) => (
-                          <option key={official.id} value={official.id}>
-                            {official.name}
-                          </option>
-                        ))}
-                      </Select>
+                      />
                     </div>
                   </div>
 
@@ -685,37 +656,28 @@ export default function EditProject() {
                       <label className="text-sm font-medium block mb-2">
                         Modalidad de Ejecución <span className="text-danger">*</span>
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="modalidad_ejecucion_id"
                         value={formData.modalidad_ejecucion_id}
                         onChange={handleInputChange}
+                        options={executionModalities || []}
+                        placeholder="Seleccione modalidad de ejecución..."
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {executionModalities?.map((mod) => (
-                          <option key={mod.id} value={mod.id}>
-                            {mod.name}
-                          </option>
-                        ))}
-                      </Select>
+                      />
                     </div>
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Modalidad de Contratación
                       </label>
-                      <Select
+                      <SearchableSelect
                         name="modalidad_contratacion_id"
                         value={formData.modalidad_contratacion_id}
                         onChange={handleInputChange}
-                      >
-                        <option value="">Seleccione...</option>
-                        {contractingModalities?.map((mod) => (
-                          <option key={mod.id} value={mod.id}>
-                            {mod.name}
-                          </option>
-                        ))}
-                      </Select>
+                        options={contractingModalities || []}
+                        placeholder="Seleccione modalidad de contratación..."
+                        required={false}
+                      />
                     </div>
                   </div>
                 </CardContent>
