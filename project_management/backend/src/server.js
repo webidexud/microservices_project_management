@@ -1780,29 +1780,47 @@ app.get('/api/dashboard/charts', async (req, res) => {
   try {
     const client = await pool.connect();
     
-    // Proyectos por estado
+    // Proyectos por estado (con valor total)
     const projectsByStatusResult = await client.query(
       `SELECT 
         ps.status_name as name,
         ps.status_color as color,
-        COUNT(p.project_id) as value
+        COUNT(p.project_id) as value,
+        COALESCE(SUM(p.project_value), 0) as total_value
        FROM project_statuses ps
        LEFT JOIN projects p ON ps.status_id = p.project_status_id AND p.is_active = true
        WHERE ps.is_active = true
-       GROUP BY ps.status_id, ps.status_name, ps.status_color
+       GROUP BY ps.status_id, ps.status_name, ps.status_color, ps.status_order
        ORDER BY ps.status_order`
     );
     
+    // Asignar colores según el estado
+    const statusColors = {
+      'En ejecución': '#0097A7',
+      'Por iniciar': '#FFB300',
+      'Finalizado': '#43A047',
+      'Suspendido': '#E53935',
+      'Planeación': '#7B1FA2',
+      'En revisión': '#FB8C00'
+    };
+    
+    projectsByStatusResult.rows.forEach(row => {
+      row.color = statusColors[row.name] || '#0097A7';
+    });
+    
     // Proyectos por tipo
+    // Proyectos por tipo (Top 10 con valor total)
     const projectsByTypeResult = await client.query(
       `SELECT 
         pt.type_name as name,
-        COUNT(p.project_id) as count
+        COUNT(p.project_id) as count,
+        COALESCE(SUM(p.project_value), 0) as total_value
        FROM project_types pt
        LEFT JOIN projects p ON pt.project_type_id = p.project_type_id AND p.is_active = true
        WHERE pt.is_active = true
        GROUP BY pt.project_type_id, pt.type_name
-       ORDER BY count DESC
+       HAVING COUNT(p.project_id) > 0
+       ORDER BY count DESC, total_value DESC
        LIMIT 10`
     );
     
@@ -1817,13 +1835,32 @@ app.get('/api/dashboard/charts', async (req, res) => {
        GROUP BY TO_CHAR(p.start_date, 'Mon'), DATE_TRUNC('month', p.start_date)
        ORDER BY DATE_TRUNC('month', p.start_date)`
     );
+
+    // Top entidades con más proyectos
+    const topEntitiesResult = await client.query(
+      `SELECT 
+        e.entity_id,
+        e.entity_name,
+        e.tax_id,
+        COUNT(p.project_id) as project_count,
+        COALESCE(SUM(p.project_value), 0) as total_value
+       FROM entities e
+       INNER JOIN projects p ON e.entity_id = p.entity_id
+       WHERE e.is_active = true 
+         AND p.is_active = true
+       GROUP BY e.entity_id, e.entity_name, e.tax_id
+       HAVING COUNT(p.project_id) > 0
+       ORDER BY project_count DESC, total_value DESC
+       LIMIT 15`
+    );
     
     client.release();
     
     res.json({
       projectsByStatus: projectsByStatusResult.rows,
       projectsByType: projectsByTypeResult.rows,
-      monthlyEvolution: monthlyEvolutionResult.rows
+      monthlyEvolution: monthlyEvolutionResult.rows,
+      topEntities: topEntitiesResult.rows, 
     });
   } catch (error) {
     console.error('Error al obtener gráficos:', error);
@@ -1893,6 +1930,7 @@ app.put('/api/projects/:id', async (req, res) => {
       observaciones,
       correos_secundarios
     } = req.body;
+
     
     // Limpiar números
     const projectValue = cleanNumber(valor_proyecto);
@@ -2151,9 +2189,181 @@ app.delete('/api/projects/:id', async (req, res) => {
   }
 });
 
-// ========== CÓDIGOS RUP ==========
+// Búsqueda avanzada de códigos RUP con filtros jerárquicos
+app.get('/api/rup-codes/search', async (req, res) => {
+  try {
+    const { 
+      query = '', 
+      segment = '',
+      family = '',
+      class_code = '',
+      limit = 50, 
+      offset = 0 
+    } = req.query;
+    
+    const client = await pool.connect();
+    
+    let conditions = ['is_active = true'];
+    let params = [];
+    let paramIndex = 1;
+    
+    // Filtro por texto general
+    if (query.trim()) {
+      conditions.push(`(
+        rup_code ILIKE $${paramIndex} OR
+        code_description ILIKE $${paramIndex} OR
+        segment_name ILIKE $${paramIndex} OR
+        family_name ILIKE $${paramIndex} OR
+        class_name ILIKE $${paramIndex} OR
+        keywords ILIKE $${paramIndex}
+      )`);
+      params.push(`%${query}%`);
+      paramIndex++;
+    }
+    
+    // Filtros jerárquicos - solo aplicar los que tengan valor
+    if (segment.trim() && segment !== '') {
+      conditions.push(`segment_code = $${paramIndex}`);
+      params.push(segment);
+      paramIndex++;
+    }
+    
+    if (family.trim() && family !== '') {
+      conditions.push(`family_code = $${paramIndex}`);
+      params.push(family);
+      paramIndex++;
+    }
+    
+    if (class_code.trim() && class_code !== '') {
+      conditions.push(`class_code = $${paramIndex}`);
+      params.push(class_code);
+      paramIndex++;
+    }
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    // Query principal
+    const sqlQuery = `
+      SELECT 
+        rup_code_id as id,
+        rup_code as code,
+        code_description as description,
+        hierarchy_level,
+        parent_code,
+        keywords,
+        segment_code,
+        segment_name,
+        family_code,
+        family_name,
+        class_code,
+        class_name,
+        is_active as active
+      FROM rup_codes
+      ${whereClause}
+      ORDER BY segment_code, family_code, class_code, rup_code
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    
+    params.push(parseInt(limit), parseInt(offset));
+    
+    console.log('🔍 Búsqueda RUP:', { query, segment, family, class_code, limit, offset });
+    console.log('📝 SQL:', sqlQuery);
+    console.log('📊 Params:', params);
+    
+    const result = await client.query(sqlQuery, params);
+    
+    // Contar total
+    const countQuery = `SELECT COUNT(*) FROM rup_codes ${whereClause}`;
+    const countParams = params.slice(0, params.length - 2); // Excluir LIMIT y OFFSET
+    const countResult = await client.query(countQuery, countParams);
+    
+    client.release();
+    
+    console.log(`✅ Encontrados ${result.rows.length} resultados de ${countResult.rows[0].count} totales`);
+    
+    res.json({
+      results: result.rows,
+      total: parseInt(countResult.rows[0].count),
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al buscar códigos RUP:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
-// Obtener todos los códigos RUP activos
+// Obtener segmentos únicos (primer nivel de jerarquía)
+app.get('/api/rup-codes/segments', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT DISTINCT 
+        segment_code as code,
+        segment_name as name
+      FROM rup_codes
+      WHERE is_active = true 
+        AND segment_code IS NOT NULL
+      ORDER BY segment_code`
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener segmentos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener familias de un segmento
+app.get('/api/rup-codes/families/:segmentCode', async (req, res) => {
+  try {
+    const { segmentCode } = req.params;
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT DISTINCT 
+        family_code as code,
+        family_name as name
+      FROM rup_codes
+      WHERE is_active = true 
+        AND segment_code = $1
+        AND family_code IS NOT NULL
+      ORDER BY family_code`,
+      [segmentCode]
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener familias:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener clases de una familia
+app.get('/api/rup-codes/classes/:familyCode', async (req, res) => {
+  try {
+    const { familyCode } = req.params;
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT DISTINCT 
+        class_code as code,
+        class_name as name
+      FROM rup_codes
+      WHERE is_active = true 
+        AND family_code = $1
+        AND class_code IS NOT NULL
+      ORDER BY class_code`,
+      [familyCode]
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener clases:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint legacy (mantener para compatibilidad)
 app.get('/api/rup-codes', async (req, res) => {
   try {
     const client = await pool.connect();
@@ -2162,15 +2372,20 @@ app.get('/api/rup-codes', async (req, res) => {
         rup_code_id as id,
         rup_code as code,
         code_description as description,
-        main_category,
-        subcategory,
         hierarchy_level,
         parent_code,
         keywords,
+        segment_code,
+        segment_name,
+        family_code,
+        family_name,
+        class_code,
+        class_name,
         is_active as active
       FROM rup_codes
       WHERE is_active = true
-      ORDER BY rup_code`
+      ORDER BY rup_code
+      LIMIT 100`
     );
     client.release();
     res.json(result.rows);
@@ -2192,8 +2407,12 @@ app.get('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) 
         prc.rup_code_id,
         rc.rup_code as code,
         rc.code_description as description,
-        rc.main_category,
-        rc.subcategory,
+        rc.segment_code,
+        rc.segment_name,
+        rc.family_code,
+        rc.family_name,
+        rc.class_code,
+        rc.class_name,
         prc.is_main_code,
         prc.participation_percentage,
         prc.observations,
@@ -2214,7 +2433,6 @@ app.get('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) 
     res.status(500).json({ error: error.message });
   }
 });
-
 // Asignar códigos RUP a un proyecto (usado al crear/editar)
 app.post('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) => {
   try {
@@ -2552,6 +2770,362 @@ app.get('/api/projects/:projectId/modifications/summary', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error al obtener resumen de modificaciones:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// REPORTES AVANZADOS
+// ============================================
+
+// Endpoint principal de reportes
+app.get('/api/reports', async (req, res) => {
+  try {
+    const {
+      type = 'general',
+      dateFrom,
+      dateTo,
+      entity,
+      dependency,
+      projectType,
+      status,
+      rupSegment,
+      rupFamily,
+      rupClass
+    } = req.query;
+
+    const client = await pool.connect();
+    let conditions = ['p.is_active = true'];
+    let params = [];
+    let paramIndex = 1;
+
+    // Filtros de fecha
+    if (dateFrom) {
+      conditions.push(`p.start_date >= $${paramIndex}`);
+      params.push(dateFrom);
+      paramIndex++;
+    }
+    if (dateTo) {
+      conditions.push(`p.start_date <= $${paramIndex}`);
+      params.push(dateTo);
+      paramIndex++;
+    }
+
+    // Filtros por entidad, dependencia, tipo, estado
+    if (entity && entity !== 'all') {
+      conditions.push(`p.entity_id = $${paramIndex}`);
+      params.push(parseInt(entity));
+      paramIndex++;
+    }
+    if (dependency && dependency !== 'all') {
+      conditions.push(`p.executing_department_id = $${paramIndex}`);
+      params.push(parseInt(dependency));
+      paramIndex++;
+    }
+    if (projectType && projectType !== 'all') {
+      conditions.push(`p.project_type_id = $${paramIndex}`);
+      params.push(parseInt(projectType));
+      paramIndex++;
+    }
+    if (status && status !== 'all') {
+      conditions.push(`ps.state_name = $${paramIndex}`);
+      params.push(status);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Reporte según tipo
+    let reportData = {};
+
+    if (type === 'general') {
+      // Métricas generales
+      const metricsQuery = `
+        SELECT 
+          COUNT(*) as total_projects,
+          SUM(p.project_value) as total_value,
+          AVG(p.project_value) as average_value,
+          COUNT(DISTINCT p.entity_id) as total_entities,
+          COUNT(DISTINCT p.executing_department_id) as total_dependencies
+        FROM projects p
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${whereClause}
+      `;
+      const metrics = await client.query(metricsQuery, params);
+      reportData.metrics = metrics.rows[0];
+
+      // Por entidad
+      const byEntityQuery = `
+        SELECT 
+          e.entity_name as name,
+          COUNT(p.project_id) as count,
+          SUM(p.project_value) as value
+        FROM projects p
+        INNER JOIN entities e ON p.entity_id = e.entity_id
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${whereClause}
+        GROUP BY e.entity_id, e.entity_name
+        ORDER BY value DESC
+        LIMIT 10
+      `;
+      const byEntity = await client.query(byEntityQuery, params);
+      reportData.byEntity = byEntity.rows;
+
+      // Por dependencia
+      const byDependencyQuery = `
+        SELECT 
+          ed.department_name as name,
+          COUNT(p.project_id) as count,
+          SUM(p.project_value) as value
+        FROM projects p
+        INNER JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${whereClause}
+        GROUP BY ed.department_id, ed.department_name
+        ORDER BY value DESC
+      `;
+      const byDependency = await client.query(byDependencyQuery, params);
+      reportData.byDependency = byDependency.rows;
+
+      // Por estado
+      const byStatusQuery = `
+        SELECT 
+          ps.state_name as name,
+          COUNT(p.project_id) as count,
+          SUM(p.project_value) as value
+        FROM projects p
+        INNER JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${whereClause}
+        GROUP BY ps.state_name
+        ORDER BY count DESC
+      `;
+      const byStatus = await client.query(byStatusQuery, params);
+      reportData.byStatus = byStatus.rows;
+
+      // Por mes
+      const byMonthQuery = `
+        SELECT 
+          TO_CHAR(p.start_date, 'YYYY-MM') as month,
+          COUNT(p.project_id) as count,
+          SUM(p.project_value) as value
+        FROM projects p
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${whereClause}
+        GROUP BY TO_CHAR(p.start_date, 'YYYY-MM')
+        ORDER BY month
+      `;
+      const byMonth = await client.query(byMonthQuery, params);
+      reportData.byMonth = byMonth.rows;
+    }
+
+    if (type === 'rup' || type === 'general') {
+      // Filtros adicionales para RUP
+      let rupConditions = conditions.slice();
+      let rupParams = params.slice();
+      let rupParamIndex = paramIndex;
+
+      if (rupSegment && rupSegment !== 'all') {
+        rupConditions.push(`rc.segment_code = $${rupParamIndex}`);
+        rupParams.push(rupSegment);
+        rupParamIndex++;
+      }
+      if (rupFamily && rupFamily !== 'all') {
+        rupConditions.push(`rc.family_code = $${rupParamIndex}`);
+        rupParams.push(rupFamily);
+        rupParamIndex++;
+      }
+      if (rupClass && rupClass !== 'all') {
+        rupConditions.push(`rc.class_code = $${rupParamIndex}`);
+        rupParams.push(rupClass);
+        rupParamIndex++;
+      }
+
+      const rupWhereClause = rupConditions.length > 0 ? `WHERE ${rupConditions.join(' AND ')}` : '';
+
+      // Por Segmento RUP
+      const byRupSegmentQuery = `
+        SELECT 
+          rc.segment_code as code,
+          rc.segment_name as name,
+          COUNT(DISTINCT p.project_id) as count,
+          SUM(p.project_value) as value
+        FROM projects p
+        INNER JOIN project_rup_codes prc ON p.project_year = prc.project_year 
+          AND p.internal_project_number = prc.internal_project_number
+        INNER JOIN rup_codes rc ON prc.rup_code_id = rc.rup_code_id
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${rupWhereClause}
+        AND prc.is_active = true
+        AND rc.segment_code IS NOT NULL
+        GROUP BY rc.segment_code, rc.segment_name
+        ORDER BY value DESC
+        LIMIT 15
+      `;
+      const byRupSegment = await client.query(byRupSegmentQuery, rupParams);
+      reportData.byRupSegment = byRupSegment.rows;
+
+      // Por Familia RUP
+      const byRupFamilyQuery = `
+        SELECT 
+          rc.family_code as code,
+          rc.family_name as name,
+          COUNT(DISTINCT p.project_id) as count,
+          SUM(p.project_value) as value
+        FROM projects p
+        INNER JOIN project_rup_codes prc ON p.project_year = prc.project_year 
+          AND p.internal_project_number = prc.internal_project_number
+        INNER JOIN rup_codes rc ON prc.rup_code_id = rc.rup_code_id
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${rupWhereClause}
+        AND prc.is_active = true
+        AND rc.family_code IS NOT NULL
+        GROUP BY rc.family_code, rc.family_name
+        ORDER BY value DESC
+        LIMIT 15
+      `;
+      const byRupFamily = await client.query(byRupFamilyQuery, rupParams);
+      reportData.byRupFamily = byRupFamily.rows;
+
+      // Top códigos RUP específicos
+      const topRupCodesQuery = `
+        SELECT 
+          rc.rup_code as code,
+          rc.code_description as name,
+          rc.segment_name,
+          rc.family_name,
+          COUNT(DISTINCT p.project_id) as count,
+          SUM(p.project_value) as value,
+          AVG(prc.participation_percentage) as avg_participation
+        FROM projects p
+        INNER JOIN project_rup_codes prc ON p.project_year = prc.project_year 
+          AND p.internal_project_number = prc.internal_project_number
+        INNER JOIN rup_codes rc ON prc.rup_code_id = rc.rup_code_id
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${rupWhereClause}
+        AND prc.is_active = true
+        GROUP BY rc.rup_code_id, rc.rup_code, rc.code_description, rc.segment_name, rc.family_name
+        ORDER BY count DESC, value DESC
+        LIMIT 20
+      `;
+      const topRupCodes = await client.query(topRupCodesQuery, rupParams);
+      reportData.topRupCodes = topRupCodes.rows;
+
+      // Proyectos sin códigos RUP
+      const projectsWithoutRupQuery = `
+        SELECT COUNT(*) as count
+        FROM projects p
+        LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+        ${whereClause}
+        AND NOT EXISTS (
+          SELECT 1 FROM project_rup_codes prc 
+          WHERE prc.project_year = p.project_year 
+            AND prc.internal_project_number = p.internal_project_number
+            AND prc.is_active = true
+        )
+      `;
+      const projectsWithoutRup = await client.query(projectsWithoutRupQuery, params);
+      reportData.projectsWithoutRup = projectsWithoutRup.rows[0].count;
+    }
+
+    client.release();
+    res.json(reportData);
+
+  } catch (error) {
+    console.error('Error al generar reporte:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Exportar reporte detallado (para Excel/PDF)
+app.get('/api/reports/detailed', async (req, res) => {
+  try {
+    const {
+      dateFrom,
+      dateTo,
+      entity,
+      dependency,
+      projectType,
+      status,
+      rupSegment,
+      rupFamily,
+      rupClass
+    } = req.query;
+
+    const client = await pool.connect();
+    let conditions = ['p.is_active = true'];
+    let params = [];
+    let paramIndex = 1;
+
+    // Aplicar filtros
+    if (dateFrom) {
+      conditions.push(`p.start_date >= $${paramIndex}`);
+      params.push(dateFrom);
+      paramIndex++;
+    }
+    if (dateTo) {
+      conditions.push(`p.start_date <= $${paramIndex}`);
+      params.push(dateTo);
+      paramIndex++;
+    }
+    if (entity && entity !== 'all') {
+      conditions.push(`p.entity_id = $${paramIndex}`);
+      params.push(parseInt(entity));
+      paramIndex++;
+    }
+    if (dependency && dependency !== 'all') {
+      conditions.push(`p.executing_department_id = $${paramIndex}`);
+      params.push(parseInt(dependency));
+      paramIndex++;
+    }
+    if (projectType && projectType !== 'all') {
+      conditions.push(`p.project_type_id = $${paramIndex}`);
+      params.push(parseInt(projectType));
+      paramIndex++;
+    }
+    if (status && status !== 'all') {
+      conditions.push(`ps.state_name = $${paramIndex}`);
+      params.push(status);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT 
+        p.project_id,
+        p.project_year,
+        p.internal_project_number,
+        p.external_project_number,
+        p.project_name,
+        p.project_value,
+        p.start_date,
+        p.end_date,
+        e.entity_name,
+        ed.department_name,
+        pt.type_name as project_type,
+        ps.state_name as status,
+        STRING_AGG(DISTINCT rc.rup_code, ', ') as rup_codes,
+        STRING_AGG(DISTINCT rc.segment_name, ', ') as rup_segments
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+      LEFT JOIN project_types pt ON p.project_type_id = pt.project_type_id
+      LEFT JOIN project_states ps ON p.project_state_id = ps.project_state_id
+      LEFT JOIN project_rup_codes prc ON p.project_year = prc.project_year 
+        AND p.internal_project_number = prc.internal_project_number AND prc.is_active = true
+      LEFT JOIN rup_codes rc ON prc.rup_code_id = rc.rup_code_id
+      ${whereClause}
+      GROUP BY p.project_id, e.entity_name, ed.department_name, pt.type_name, ps.state_name
+      ORDER BY p.project_year DESC, p.internal_project_number DESC
+    `;
+
+    const result = await client.query(query, params);
+    client.release();
+
+    res.json({ projects: result.rows });
+
+  } catch (error) {
+    console.error('Error al generar reporte detallado:', error);
     res.status(500).json({ error: error.message });
   }
 });

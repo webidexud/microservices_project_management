@@ -67,10 +67,6 @@ export default function CreateProject() {
     queryFn: officialsApi.getActive,
   })
 
-  const { data: rupCodes } = useQuery({
-    queryKey: ["rup-codes"],
-    queryFn: () => rupCodesApi.getAll(),
-  })
   
   const [formData, setFormData] = useState({
     anio_proyecto: currentYear,
@@ -711,8 +707,7 @@ const confirmarCreacion = async () => {
                     </div>
                   </div>
 
-                  <RupCodeSelector
-                    allRupCodes={rupCodes || []}
+                <RupCodeSelector
                     selectedRupCodes={selectedRupCodes}
                     onSelectionChange={setSelectedRupCodes}
                   />

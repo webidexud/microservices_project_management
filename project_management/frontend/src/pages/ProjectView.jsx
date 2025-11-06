@@ -18,6 +18,7 @@ import {
   Target,
   Paperclip,
   AlertCircle,
+  Star,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { projectsApi, modificationsApi } from "@/lib/api"
+import { projectsApi, modificationsApi, rupCodesApi } from "@/lib/api"
 
 export default function ProjectView() {
   const { id } = useParams()
@@ -56,6 +57,21 @@ export default function ProjectView() {
     queryKey: ["modifications-summary", id],
     queryFn: () => modificationsApi.getSummary(id),
     enabled: !!id,
+  })
+
+  // Cargar códigos RUP del proyecto
+  const { data: projectRupCodes } = useQuery({
+    queryKey: ["project-rup-codes", id],
+    queryFn: () => {
+      if (project) {
+        return rupCodesApi.getByProject(
+          project.project_year,
+          project.internal_project_number
+        )
+      }
+      return Promise.resolve([])
+    },
+    enabled: !!project,
   })
 
   if (loadingProject) {
@@ -504,6 +520,84 @@ export default function ProjectView() {
                   </div>
                 </CardContent>
               </Card>
+              {/* Códigos RUP */}
+              {projectRupCodes && projectRupCodes.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      Códigos RUP (UNSPSC)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {projectRupCodes.map((code, index) => (
+                      <div
+                        key={code.id}
+                        className={`p-4 rounded-lg border ${
+                          code.is_main_code
+                            ? "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-300 dark:border-yellow-800"
+                            : "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="font-mono text-xs font-semibold">
+                                {code.code}
+                              </Badge>
+                              {code.is_main_code && (
+                                <Badge className="bg-yellow-500 text-yellow-950 text-xs">
+                                  <Star className="h-3 w-3 mr-1" />
+                                  Principal
+                                </Badge>
+                              )}
+                              {code.participation_percentage && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {code.participation_percentage}%
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-2">
+                              {code.description}
+                            </p>
+                            
+                            <div className="flex flex-wrap gap-1.5">
+                              {code.segment_name && (
+                                <Badge variant="outline" className="text-xs">
+                                  📊 {code.segment_name}
+                                </Badge>
+                              )}
+                              {code.family_name && (
+                                <Badge variant="outline" className="text-xs">
+                                  📁 {code.family_name}
+                                </Badge>
+                              )}
+                              {code.class_name && (
+                                <Badge variant="outline" className="text-xs">
+                                  📂 {code.class_name}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {code.observations && (
+                              <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-2 italic">
+                                💬 {code.observations}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {code.assignment_date && (
+                          <div className="text-xs text-neutral-500 dark:text-neutral-500 mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                            Asignado el: {formatDate(code.assignment_date)}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Columna lateral */}

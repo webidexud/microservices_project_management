@@ -282,26 +282,29 @@ export default function Projects() {
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(project.end_date)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                    <TableCell>
+                      <div className="flex gap-1 justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleViewProject(project)}
+                          title="Ver detalles del proyecto"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
                           onClick={() => handleEditProject(project)}
+                          title="Editar proyecto"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
+                        <Button
                           variant="ghost" 
                           size="icon"
                           onClick={() => handleDeleteProject(project)}
+                          title="Deshabilitar proyecto"
                         >
                           <Trash2 className="h-4 w-4 text-danger" />
                         </Button>
@@ -309,7 +312,7 @@ export default function Projects() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenModifications(project)}
-                          title="Modificaciones"
+                          title="Ver/Agregar modificaciones (Adiciones y Prórrogas)"
                         >
                           <FileEdit className="h-4 w-4" />
                         </Button>

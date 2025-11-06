@@ -10,7 +10,52 @@ async function handleResponse(response) {
 
 // Códigos RUP
 export const rupCodesApi = {
-  // Obtener todos los códigos RUP activos
+  // Búsqueda avanzada con filtros jerárquicos
+  search: async (query = '', filters = {}, limit = 50, offset = 0) => {
+    const params = new URLSearchParams()
+    
+    // Solo agregar parámetros con valor
+    if (query && query.trim() !== '') {
+      params.append('query', query.trim())
+    }
+    if (filters.segment && filters.segment.trim() !== '') {
+      params.append('segment', filters.segment.trim())
+    }
+    if (filters.family && filters.family.trim() !== '') {
+      params.append('family', filters.family.trim())
+    }
+    if (filters.class_code && filters.class_code.trim() !== '') {
+      params.append('class_code', filters.class_code.trim())
+    }
+    
+    params.append('limit', limit.toString())
+    params.append('offset', offset.toString())
+    
+    console.log('🌐 Request URL:', `${API_BASE_URL}/rup-codes/search?${params}`)
+    
+    const response = await fetch(`${API_BASE_URL}/rup-codes/search?${params}`)
+    return handleResponse(response)
+  },
+
+  // Obtener segmentos
+  getSegments: async () => {
+    const response = await fetch(`${API_BASE_URL}/rup-codes/segments`)
+    return handleResponse(response)
+  },
+
+  // Obtener familias de un segmento
+  getFamilies: async (segmentCode) => {
+    const response = await fetch(`${API_BASE_URL}/rup-codes/families/${segmentCode}`)
+    return handleResponse(response)
+  },
+
+  // Obtener clases de una familia
+  getClasses: async (familyCode) => {
+    const response = await fetch(`${API_BASE_URL}/rup-codes/classes/${familyCode}`)
+    return handleResponse(response)
+  },
+
+  // Obtener todos (legacy)
   getAll: async () => {
     const response = await fetch(`${API_BASE_URL}/rup-codes`)
     return handleResponse(response)

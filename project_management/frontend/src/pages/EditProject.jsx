@@ -89,11 +89,7 @@ export default function EditProject() {
     queryFn: () => officialsApi.getActive(),
   })
 
-  // Cargar todos los códigos RUP disponibles
-  const { data: rupCodes } = useQuery({
-    queryKey: ["rup-codes"],
-    queryFn: () => rupCodesApi.getAll(),
-  })
+  
 
   // Cargar códigos RUP ya asignados al proyecto
   const { data: projectRupCodes } = useQuery({
@@ -231,15 +227,27 @@ export default function EditProject() {
     }
   }, [project])
 
-  // Cargar los códigos RUP ya asignados cuando estén disponibles
+// Cargar los códigos RUP ya asignados cuando estén disponibles
   useEffect(() => {
     if (projectRupCodes && projectRupCodes.length > 0) {
+      console.log('📦 Códigos RUP del proyecto:', projectRupCodes)
+      
       const formattedCodes = projectRupCodes.map(code => ({
         rup_code_id: code.rup_code_id,
+        code: code.code,
+        description: code.description,
+        segment_code: code.segment_code,
+        segment_name: code.segment_name,
+        family_code: code.family_code,
+        family_name: code.family_name,
+        class_code: code.class_code,
+        class_name: code.class_name,
         is_main_code: code.is_main_code,
         participation_percentage: code.participation_percentage,
         observations: code.observations
       }))
+      
+      console.log('✅ Códigos formateados:', formattedCodes)
       setSelectedRupCodes(formattedCodes)
     }
   }, [projectRupCodes])
@@ -929,7 +937,6 @@ export default function EditProject() {
                   </div>
 
                   <RupCodeSelector
-                    allRupCodes={rupCodes || []}
                     selectedRupCodes={selectedRupCodes}
                     onSelectionChange={setSelectedRupCodes}
                   />
