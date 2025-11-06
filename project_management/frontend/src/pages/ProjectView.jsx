@@ -133,7 +133,7 @@ export default function ProjectView() {
     const badges = {
       ADDITION: { variant: "success", label: "Adición" },
       EXTENSION: { variant: "info", label: "Prórroga" },
-      BOTH: { variant: "warning", label: "Ambas" },
+      BOTH: { variant: "warning", label: "Adición y Prórroga" },
     }
     return badges[type] || { variant: "default", label: type }
   }

@@ -191,7 +191,7 @@ export default function ModificationsDialog({ project, open, onClose }) {
       case "EXTENSION":
         return <Badge variant="info">Prórroga</Badge>
       case "BOTH":
-        return <Badge variant="warning">Ambas</Badge>
+        return <Badge variant="warning">Adición y Prórroga</Badge>
       default:
         return null
     }
