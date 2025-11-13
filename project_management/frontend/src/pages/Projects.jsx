@@ -86,10 +86,10 @@ export default function Projects() {
 
   const getStatusColor = (status) => {
     const colors = {
-      "En ejecución": "info",
-      "Por iniciar": "warning",
-      Finalizado: "success",
-      Suspendido: "danger",
+      "In Progress": "info",
+      "Pending": "warning",
+      "Completed": "success",
+      "Suspended": "danger",
     }
     return colors[status] || "default"
   }
@@ -168,11 +168,10 @@ export default function Projects() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">Todos los estados</option>
-              <option value="En ejecución">En ejecución</option>
-              <option value="Por iniciar">Por iniciar</option>
-              <option value="Finalizado">Finalizado</option>
-              <option value="Suspendido">Suspendido</option>
+              <option value="In Progress">En ejecución</option>
+              <option value="Pending">Por iniciar</option>
+              <option value="Completed">Finalizado</option>
+              <option value="Suspended">Suspendido</option>
             </Select>
             <Button variant="outline">
               <Filter className="h-4 w-4 mr-2" />
@@ -200,12 +199,12 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">En Ejecución</p>
-                <p className="text-2xl font-bold">
-                  {
-                    projects?.filter((p) => p.status === "En ejecución")
-                      .length || 0
-                  }
-                </p>
+                  <p className="text-2xl font-bold">
+                    {
+                      projects?.filter((p) => p.status === "In Progress")
+                        .length || 0
+                    }
+                  </p>
               </div>
               <Calendar className="h-8 w-8 text-info" />
             </div>
@@ -217,7 +216,7 @@ export default function Projects() {
               <div>
                 <p className="text-sm text-text-secondary">Por Iniciar</p>
                 <p className="text-2xl font-bold">
-                  {projects?.filter((p) => p.status === "Por iniciar").length || 0}
+                  {projects?.filter((p) => p.status === "Pending").length || 0}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-warning" />

@@ -157,6 +157,7 @@ export default function ProjectView() {
   const tabs = [
     { id: "general", label: "Información General", icon: FileText },
     { id: "financial", label: "Información Financiera", icon: DollarSign },
+    { id: "rup", label: "Códigos RUP", icon: Target },
     { id: "modifications", label: "Modificaciones", icon: FileEdit },
     { id: "timeline", label: "Línea de Tiempo", icon: Calendar },
   ]
@@ -520,84 +521,6 @@ export default function ProjectView() {
                   </div>
                 </CardContent>
               </Card>
-              {/* Códigos RUP */}
-              {projectRupCodes && projectRupCodes.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-primary" />
-                      Códigos RUP (UNSPSC)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {projectRupCodes.map((code, index) => (
-                      <div
-                        key={code.id}
-                        className={`p-4 rounded-lg border ${
-                          code.is_main_code
-                            ? "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-300 dark:border-yellow-800"
-                            : "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="font-mono text-xs font-semibold">
-                                {code.code}
-                              </Badge>
-                              {code.is_main_code && (
-                                <Badge className="bg-yellow-500 text-yellow-950 text-xs">
-                                  <Star className="h-3 w-3 mr-1" />
-                                  Principal
-                                </Badge>
-                              )}
-                              {code.participation_percentage && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {code.participation_percentage}%
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-2">
-                              {code.description}
-                            </p>
-                            
-                            <div className="flex flex-wrap gap-1.5">
-                              {code.segment_name && (
-                                <Badge variant="outline" className="text-xs">
-                                  📊 {code.segment_name}
-                                </Badge>
-                              )}
-                              {code.family_name && (
-                                <Badge variant="outline" className="text-xs">
-                                  📁 {code.family_name}
-                                </Badge>
-                              )}
-                              {code.class_name && (
-                                <Badge variant="outline" className="text-xs">
-                                  📂 {code.class_name}
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {code.observations && (
-                              <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-2 italic">
-                                💬 {code.observations}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {code.assignment_date && (
-                          <div className="text-xs text-neutral-500 dark:text-neutral-500 mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
-                            Asignado el: {formatDate(code.assignment_date)}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
             </div>
 
             {/* Columna lateral */}
@@ -1036,6 +959,201 @@ export default function ProjectView() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+        {/* TAB: CÓDIGOS RUP */}
+        {activeTab === "rup" && (
+          <div className="space-y-6">
+            {/* Header de sección */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Target className="h-6 w-6 text-primary" />
+                  Códigos RUP Asignados
+                </h2>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                  Registro Único de Prestadores - Clasificación del proyecto
+                </p>
+              </div>
+            </div>
+
+            {/* Resumen de códigos */}
+            <div className="grid grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+                    Total Códigos
+                  </p>
+                  <p className="text-3xl font-semibold text-primary">
+                    {projectRupCodes?.length || 0}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+                    Código Principal
+                  </p>
+                  <p className="text-3xl font-semibold text-success">
+                    {projectRupCodes?.filter(code => code.is_main_code).length || 0}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+                    Códigos Secundarios
+                  </p>
+                  <p className="text-3xl font-semibold text-info">
+                    {projectRupCodes?.filter(code => !code.is_main_code).length || 0}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Lista de códigos RUP */}
+            {projectRupCodes && projectRupCodes.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    Códigos Asignados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {projectRupCodes.map((rupCode, index) => (
+                      <div
+                        key={rupCode.id || index}
+                        className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-5 bg-neutral-50 dark:bg-neutral-800/50 hover:shadow-md transition-shadow"
+                      >
+                        {/* Header del código */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Target className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-lg font-bold text-primary">
+                                  {rupCode.code}
+                                </span>
+                                {rupCode.is_main_code && (
+                                  <Badge variant="success" className="text-xs">
+                                    <Star className="h-3 w-3 mr-1" />
+                                    Principal
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                                {rupCode.description}
+                              </p>
+                            </div>
+                          </div>
+                          {rupCode.participation_percentage && (
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-success">
+                                {rupCode.participation_percentage}%
+                              </p>
+                              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                Participación
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Jerarquía RUP */}
+                        <div className="grid grid-cols-3 gap-4 bg-white dark:bg-neutral-900 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
+                          <div>
+                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
+                              Segmento
+                            </p>
+                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                              {rupCode.segment_code}
+                            </p>
+                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                              {rupCode.segment_name}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
+                              Familia
+                            </p>
+                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                              {rupCode.family_code}
+                            </p>
+                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                              {rupCode.family_name}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
+                              Clase
+                            </p>
+                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                              {rupCode.class_code}
+                            </p>
+                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                              {rupCode.class_name}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Información adicional */}
+                        {(rupCode.observations || rupCode.assignment_date) && (
+                          <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                            <div className="grid grid-cols-2 gap-4">
+                              {rupCode.assignment_date && (
+                                <div>
+                                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
+                                    Fecha de Asignación
+                                  </p>
+                                  <p className="text-sm font-medium flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-neutral-400" />
+                                    {formatDate(rupCode.assignment_date)}
+                                  </p>
+                                </div>
+                              )}
+                              {rupCode.observations && (
+                                <div className="col-span-2">
+                                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
+                                    Observaciones
+                                  </p>
+                                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                                    {rupCode.observations}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="py-16">
+                  <div className="text-center">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
+                      <Target className="h-8 w-8 text-neutral-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+                      No hay códigos RUP asignados
+                    </h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+                      Este proyecto aún no tiene códigos RUP asociados. Los códigos RUP son necesarios para la clasificación oficial del proyecto.
+                    </p>
+                    <Button onClick={() => navigate(`/projects/edit/${id}`)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar Proyecto para Asignar Códigos
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>
