@@ -79,11 +79,6 @@ export default function EditProject() {
     queryFn: () => executionModalitiesApi.getActive(),
   })
 
-  const { data: contractingModalities } = useQuery({
-    queryKey: ["contracting-modalities"],
-    queryFn: () => contractingModalitiesApi.getActive(),
-  })
-
   const { data: officials } = useQuery({
     queryKey: ["officials"],
     queryFn: () => officialsApi.getActive(),
@@ -117,7 +112,6 @@ export default function EditProject() {
     tipo_proyecto_id: "",
     tipo_financiacion_id: "",
     modalidad_ejecucion_id: "",
-    modalidad_contratacion_id: "",
     valor_proyecto: "",
     codigo_contable: "",
     porcentaje_beneficio: 12,
@@ -203,7 +197,6 @@ export default function EditProject() {
         tipo_proyecto_id: project.project_type_id,
         tipo_financiacion_id: project.financing_type_id,
         modalidad_ejecucion_id: project.execution_modality_id,
-        modalidad_contratacion_id: project.contracting_modality_id || "",
         valor_proyecto: formatNumber(Math.round(project.project_value)),
         codigo_contable: project.accounting_code || "",
         porcentaje_beneficio: project.institutional_benefit_percentage || 12,
@@ -714,20 +707,6 @@ export default function EditProject() {
                         required
                       />
                     </div>
-
-                    <div>
-                      <label className="text-sm font-medium block mb-2">
-                        Modalidad de Contratación
-                      </label>
-                      <SearchableSelect
-                        name="modalidad_contratacion_id"
-                        value={formData.modalidad_contratacion_id}
-                        onChange={handleInputChange}
-                        options={contractingModalities || []}
-                        placeholder="Seleccione modalidad de contratación..."
-                        required={false}
-                      />
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -785,7 +764,7 @@ export default function EditProject() {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Aporte Universidad (COP)
+                        Contrapartida en Especie (COP)
                       </label>
                       <Input
                         name="aporte_universidad"

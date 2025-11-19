@@ -775,124 +775,6 @@ app.patch('/api/execution-modalities/:id/toggle', async (req, res) => {
   }
 });
 
-// ========== MODALIDADES DE CONTRATACIÓN ==========
-app.get('/api/contracting-modalities', async (req, res) => {
-  try {
-    const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
-        contracting_modality_id as id, 
-        modality_name as name, 
-        modality_description as description, 
-        is_active as active 
-      FROM contracting_modalities 
-      ORDER BY modality_name ASC`
-    );
-    client.release();
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Error al obtener modalidades de contratación:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/contracting-modalities/active', async (req, res) => {
-  try {
-    const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
-        contracting_modality_id as id, 
-        modality_name as name, 
-        modality_description as description, 
-        is_active as active 
-      FROM contracting_modalities 
-      WHERE is_active = true 
-      ORDER BY modality_name ASC`
-    );
-    client.release();
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/contracting-modalities', async (req, res) => {
-  try {
-    const { name, description } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'El nombre es obligatorio' });
-    }
-    
-    const client = await pool.connect();
-    const result = await client.query(
-      `INSERT INTO contracting_modalities (modality_name, modality_description, is_active, created_by_user_id) 
-       VALUES ($1, $2, true, 1) 
-       RETURNING contracting_modality_id as id, modality_name as name, modality_description as description, is_active as active`,
-      [name, description]
-    );
-    client.release();
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('Error al crear modalidad de contratación:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put('/api/contracting-modalities/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'El nombre es obligatorio' });
-    }
-    
-    const client = await pool.connect();
-    const result = await client.query(
-      `UPDATE contracting_modalities 
-       SET modality_name = $1, modality_description = $2, updated_at = CURRENT_TIMESTAMP, updated_by_user_id = 1 
-       WHERE contracting_modality_id = $3 
-       RETURNING contracting_modality_id as id, modality_name as name, modality_description as description, is_active as active`,
-      [name, description, id]
-    );
-    client.release();
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Modalidad de contratación no encontrada' });
-    }
-    
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error al actualizar modalidad de contratación:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.patch('/api/contracting-modalities/:id/toggle', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const client = await pool.connect();
-    const result = await client.query(
-      `UPDATE contracting_modalities 
-       SET is_active = NOT is_active 
-       WHERE contracting_modality_id = $1 
-       RETURNING contracting_modality_id as id, modality_name as name, modality_description as description, is_active as active`,
-      [id]
-    );
-    client.release();
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Modalidad de contratación no encontrada' });
-    }
-    
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error al cambiar estado:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // ========== ESTADOS DE PROYECTO ==========
 app.get('/api/project-states', async (req, res) => {
   try {
@@ -1337,7 +1219,6 @@ app.get('/api/projects', async (req, res) => {
         pt.type_name as type,
         ft.financing_name as financing,
         em.modality_name as execution_modality,
-        cm.modality_name as contracting_modality,
         CONCAT(oo.first_name, ' ', oo.first_surname) as ordering_official
       FROM projects p
       LEFT JOIN entities e ON p.entity_id = e.entity_id
@@ -1346,7 +1227,6 @@ app.get('/api/projects', async (req, res) => {
       LEFT JOIN project_types pt ON p.project_type_id = pt.project_type_id
       LEFT JOIN financing_types ft ON p.financing_type_id = ft.financing_type_id
       LEFT JOIN execution_modalities em ON p.execution_modality_id = em.execution_modality_id
-      LEFT JOIN contracting_modalities cm ON p.contracting_modality_id = cm.contracting_modality_id
       LEFT JOIN ordering_officials oo ON p.ordering_official_id = oo.official_id
       WHERE p.is_active = true
       ORDER BY p.project_year DESC, p.internal_project_number DESC`
@@ -1392,7 +1272,6 @@ app.get('/api/projects/recent', async (req, res) => {
 
 
 // GET - Obtener un proyecto por ID
-// GET - Obtener un proyecto por ID
 app.get('/api/projects/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1414,7 +1293,6 @@ app.get('/api/projects/:id', async (req, res) => {
         p.project_type_id,
         p.financing_type_id,
         p.execution_modality_id,
-        p.contracting_modality_id,
         p.project_value,
         p.accounting_code,
         p.institutional_benefit_percentage,
@@ -1441,7 +1319,6 @@ app.get('/api/projects/:id', async (req, res) => {
         pt.type_name as project_type,
         ft.financing_name as financing_type,
         em.modality_name as execution_modality,
-        cm.modality_name as contracting_modality,
         CONCAT(oo.first_name, ' ', COALESCE(oo.second_name || ' ', ''), oo.first_surname, ' ', COALESCE(oo.second_surname, '')) as ordering_official_name
       FROM projects p
       LEFT JOIN entities e ON p.entity_id = e.entity_id
@@ -1450,7 +1327,6 @@ app.get('/api/projects/:id', async (req, res) => {
       LEFT JOIN project_types pt ON p.project_type_id = pt.project_type_id
       LEFT JOIN financing_types ft ON p.financing_type_id = ft.financing_type_id
       LEFT JOIN execution_modalities em ON p.execution_modality_id = em.execution_modality_id
-      LEFT JOIN contracting_modalities cm ON p.contracting_modality_id = cm.contracting_modality_id
       LEFT JOIN ordering_officials oo ON p.ordering_official_id = oo.official_id
       WHERE p.project_id = $1`,
       [id]
@@ -1519,7 +1395,6 @@ app.post('/api/projects', async (req, res) => {
       tipo_proyecto_id,
       tipo_financiacion_id,
       modalidad_ejecucion_id,
-      modalidad_contratacion_id,
       valor_proyecto,
       codigo_contable,
       porcentaje_beneficio,
@@ -1575,7 +1450,6 @@ app.post('/api/projects', async (req, res) => {
         project_type_id,
         financing_type_id,
         execution_modality_id,
-        contracting_modality_id,
         project_value,
         accounting_code,
         institutional_benefit_percentage,
@@ -1596,7 +1470,7 @@ app.post('/api/projects', async (req, res) => {
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, $27, true, NULL
+        $21, $22, $23, $24, $25, $26, true, NULL
       ) RETURNING project_id`,
       [
         anio_proyecto,
@@ -1610,7 +1484,6 @@ app.post('/api/projects', async (req, res) => {
         tipo_proyecto_id,
         tipo_financiacion_id,
         modalidad_ejecucion_id,
-        modalidad_contratacion_id || null,
         projectValue,
         codigo_contable || null,
         porcentaje_beneficio || 12,
@@ -1633,85 +1506,45 @@ app.post('/api/projects', async (req, res) => {
     
     console.log(`✅ Proyecto creado con ID: ${projectId}`);
     
-    // 7. Insertar correos secundarios (si existen)
-    if (correos_secundarios && Array.isArray(correos_secundarios) && correos_secundarios.length > 0) {
-      for (const email of correos_secundarios) {
-        if (email && email.trim() !== '') {
-          await client.query(
-            `INSERT INTO project_secondary_emails (project_id, email, is_active)
-             VALUES ($1, $2, true)`,
-            [projectId, email.trim()]
-          );
-        }
+    // 7. Insertar correos secundarios si existen
+    if (correos_secundarios && correos_secundarios.length > 0) {
+      const validEmails = correos_secundarios.filter(email => email && email.trim() !== '');
+      
+      for (const email of validEmails) {
+        await client.query(
+          `INSERT INTO project_secondary_emails (project_id, email, is_active) 
+           VALUES ($1, $2, true)`,
+          [projectId, email.trim()]
+        );
       }
-      console.log(`📧 ${correos_secundarios.length} correos secundarios agregados`);
+      
+      console.log(`📧 ${validEmails.length} correos secundarios agregados`);
     }
     
-    // 8. Confirmar transacción
+    // 8. Commit de la transacción
     await client.query('COMMIT');
-    
-    // 9. Obtener el proyecto completo para devolver
-    const fullProjectResult = await client.query(
-      `SELECT 
-        p.project_id as id,
-        p.project_year as year,
-        p.internal_project_number as internal_number,
-        p.external_project_number as external_number,
-        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
-        p.project_name as name,
-        p.project_purpose as purpose,
-        p.project_value as value,
-        p.start_date,
-        p.end_date,
-        e.entity_name as entity,
-        ed.department_name as department,
-        ps.status_name as status
-      FROM projects p
-      LEFT JOIN entities e ON p.entity_id = e.entity_id
-      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
-      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
-      WHERE p.project_id = $1`,
-      [projectId]
-    );
     
     console.log(`🎉 Proyecto ${anio_proyecto}-${internalNumber} creado exitosamente`);
     
+    // 9. Respuesta exitosa
     res.status(201).json({
       success: true,
       message: 'Proyecto creado exitosamente',
-      project: fullProjectResult.rows[0]
+      project: {
+        id: projectId,
+        year: anio_proyecto,
+        internal_number: internalNumber,
+        code: `${anio_proyecto}-${String(internalNumber).padStart(3, '0')}`
+      }
     });
     
   } catch (error) {
-    // Revertir transacción en caso de error
     await client.query('ROLLBACK');
-    
     console.error('❌ Error al crear proyecto:', error);
-    
-    // Manejo de errores específicos de PostgreSQL
-    if (error.code === '23505') {
-      return res.status(409).json({ 
-        error: 'Ya existe un proyecto con ese año y número interno' 
-      });
-    }
-    
-    if (error.code === '23503') {
-      return res.status(400).json({ 
-        error: 'Una o más relaciones (entidad, departamento, etc.) no existen en la base de datos' 
-      });
-    }
-    
-    if (error.code === '23514') {
-      return res.status(400).json({ 
-        error: 'Los datos no cumplen con las restricciones de la base de datos' 
-      });
-    }
-    
     res.status(500).json({ 
       error: 'Error al crear el proyecto',
       details: error.message 
     });
-    
   } finally {
     client.release();
   }
@@ -1869,12 +1702,6 @@ app.get('/api/dashboard/charts', async (req, res) => {
   }
 });
 
-
-
-
-
-
-
 // PUT - Actualizar proyecto existente
 app.put('/api/projects/:id', async (req, res) => {
   const client = await pool.connect();
@@ -1913,7 +1740,6 @@ app.put('/api/projects/:id', async (req, res) => {
       tipo_proyecto_id,
       tipo_financiacion_id,
       modalidad_ejecucion_id,
-      modalidad_contratacion_id,
       valor_proyecto,
       codigo_contable,
       porcentaje_beneficio,
@@ -1966,25 +1792,24 @@ app.put('/api/projects/:id', async (req, res) => {
         project_type_id = $8,
         financing_type_id = $9,
         execution_modality_id = $10,
-        contracting_modality_id = $11,
-        project_value = $12,
-        accounting_code = $13,
-        institutional_benefit_percentage = $14,
-        institutional_benefit_value = $15,
-        university_contribution = $16,
-        entity_contribution = $17,
-        beneficiaries_count = $18,
-        subscription_date = $19,
-        start_date = $20,
-        end_date = $21,
-        ordering_official_id = $22,
-        main_email = $23,
-        administrative_act = $24,
-        secop_link = $25,
-        observations = $26,
+        project_value = $11,
+        accounting_code = $12,
+        institutional_benefit_percentage = $13,
+        institutional_benefit_value = $14,
+        university_contribution = $15,
+        entity_contribution = $16,
+        beneficiaries_count = $17,
+        subscription_date = $18,
+        start_date = $19,
+        end_date = $20,
+        ordering_official_id = $21,
+        main_email = $22,
+        administrative_act = $23,
+        secop_link = $24,
+        observations = $25,
         updated_at = CURRENT_TIMESTAMP,
         updated_by_user_id = NULL
-      WHERE project_id = $27
+      WHERE project_id = $26
       RETURNING project_id`,
       [
         anio_proyecto,
@@ -1997,7 +1822,6 @@ app.put('/api/projects/:id', async (req, res) => {
         tipo_proyecto_id,
         tipo_financiacion_id,
         modalidad_ejecucion_id,
-        modalidad_contratacion_id || null,
         projectValue,
         codigo_contable || null,
         porcentaje_beneficio || 12,
@@ -2020,106 +1844,56 @@ app.put('/api/projects/:id', async (req, res) => {
     console.log(`✅ Proyecto actualizado: ID ${id}`);
     
     // 7. Actualizar correos secundarios
-    // Primero, desactivar todos los correos existentes
+    // Primero eliminar los existentes
     await client.query(
-      `UPDATE project_secondary_emails 
-       SET is_active = false 
-       WHERE project_id = $1`,
+      'DELETE FROM project_secondary_emails WHERE project_id = $1',
       [id]
     );
     
-    // Luego, insertar los nuevos correos (si existen)
-    if (correos_secundarios && Array.isArray(correos_secundarios) && correos_secundarios.length > 0) {
-      for (const email of correos_secundarios) {
-        if (email && email.trim() !== '') {
-          // Intentar reactivar si ya existe, sino insertar nuevo
-          const existingEmail = await client.query(
-            `SELECT secondary_email_id 
-             FROM project_secondary_emails 
-             WHERE project_id = $1 AND email = $2`,
-            [id, email.trim()]
-          );
-          
-          if (existingEmail.rows.length > 0) {
-            // Reactivar correo existente
-            await client.query(
-              `UPDATE project_secondary_emails 
-               SET is_active = true 
-               WHERE secondary_email_id = $1`,
-              [existingEmail.rows[0].secondary_email_id]
-            );
-          } else {
-            // Insertar nuevo correo
-            await client.query(
-              `INSERT INTO project_secondary_emails (project_id, email, is_active)
-               VALUES ($1, $2, true)`,
-              [id, email.trim()]
-            );
-          }
-        }
+    // Luego insertar los nuevos si existen
+    if (correos_secundarios && correos_secundarios.length > 0) {
+      const validEmails = correos_secundarios.filter(email => email && email.trim() !== '');
+      
+      for (const email of validEmails) {
+        await client.query(
+          `INSERT INTO project_secondary_emails (project_id, email, is_active) 
+           VALUES ($1, $2, true)`,
+          [id, email.trim()]
+        );
       }
-      console.log(`📧 Correos secundarios actualizados`);
+      
+      console.log(`📧 ${validEmails.length} correos secundarios actualizados`);
     }
     
-    // 8. Confirmar transacción
-    await client.query('COMMIT');
-    
-    // 9. Obtener el proyecto actualizado completo
-    const fullProjectResult = await client.query(
-      `SELECT 
-        p.project_id as id,
-        p.project_year as year,
-        p.internal_project_number as internal_number,
-        p.external_project_number as external_number,
-        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as code,
-        p.project_name as name,
-        p.project_purpose as purpose,
-        p.project_value as value,
-        p.start_date,
-        p.end_date,
-        e.entity_name as entity,
-        ed.department_name as department,
-        ps.status_name as status
-      FROM projects p
-      LEFT JOIN entities e ON p.entity_id = e.entity_id
-      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
-      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
-      WHERE p.project_id = $1`,
+    // 8. Obtener el internal_project_number para la respuesta
+    const projectData = await client.query(
+      'SELECT internal_project_number, project_year FROM projects WHERE project_id = $1',
       [id]
     );
-
-    console.log(`🎉 Proyecto ${id} actualizado exitosamente`);
-
+    
+    // 9. Commit de la transacción
+    await client.query('COMMIT');
+    
+    console.log(`🎉 Proyecto actualizado exitosamente`);
+    
+    // 10. Respuesta exitosa
     res.json({
       success: true,
       message: 'Proyecto actualizado exitosamente',
-      project: fullProjectResult.rows[0]  // ← DEBE SER fullProjectResult, no fullProject
+      project: {
+        id: parseInt(id),
+        year: projectData.rows[0].project_year,
+        internal_number: projectData.rows[0].internal_project_number
+      }
     });
     
   } catch (error) {
-    // Revertir transacción en caso de error
     await client.query('ROLLBACK');
-    
     console.error('❌ Error al actualizar proyecto:', error);
-    
-    // Manejo de errores específicos
-    if (error.code === '23503') {
-      return res.status(400).json({ 
-        error: 'Una o más relaciones (entidad, departamento, etc.) no existen en la base de datos' 
-      });
-    }
-    
-    if (error.code === '23514') {
-      return res.status(400).json({ 
-        error: 'Los datos no cumplen con las restricciones de la base de datos' 
-      });
-    }
-    
     res.status(500).json({ 
       error: 'Error al actualizar el proyecto',
       details: error.message 
     });
-    
   } finally {
     client.release();
   }

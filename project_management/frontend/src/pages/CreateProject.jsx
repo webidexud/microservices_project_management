@@ -57,11 +57,6 @@ export default function CreateProject() {
     queryFn: executionModalitiesApi.getActive,
   })
 
-  const { data: contractingModalities } = useQuery({
-    queryKey: ["contracting-modalities-active"],
-    queryFn: contractingModalitiesApi.getActive,
-  })
-
   const { data: officials } = useQuery({
     queryKey: ["officials-active"],
     queryFn: officialsApi.getActive,
@@ -79,7 +74,6 @@ export default function CreateProject() {
     tipo_proyecto_id: "",
     tipo_financiacion_id: "",
     modalidad_ejecucion_id: "",
-    modalidad_contratacion_id: "",
     valor_proyecto: "",
     codigo_contable: "",
     porcentaje_beneficio: 12,
@@ -506,20 +500,6 @@ const confirmarCreacion = async () => {
                         required
                       />
                     </div>
-
-                    <div>
-                      <label className="text-sm font-medium block mb-2">
-                        Modalidad de Contratación
-                      </label>
-                      <SearchableSelect
-                        name="modalidad_contratacion_id"
-                        value={formData.modalidad_contratacion_id}
-                        onChange={handleInputChange}
-                        options={contractingModalities || []}
-                        placeholder="Seleccione modalidad de contratación..."
-                        required={false}
-                      />
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -593,7 +573,7 @@ const confirmarCreacion = async () => {
                   <div className="grid grid-cols-2 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Aporte Universidad (COP)
+                        Contrapartida en Especie (COP)
                       </label>
                       <Input
                         name="aporte_universidad"

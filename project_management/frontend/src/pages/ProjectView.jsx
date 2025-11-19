@@ -497,17 +497,6 @@ export default function ProjectView() {
                       </p>
                     </div>
 
-                    {project.contracting_modality && (
-                      <div>
-                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                          Modalidad Contratación
-                        </label>
-                        <p className="text-sm font-medium mt-1">
-                          {project.contracting_modality}
-                        </p>
-                      </div>
-                    )}
-
                     {project.accounting_code && (
                       <div>
                         <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
@@ -769,7 +758,7 @@ export default function ProjectView() {
 
                   <div>
                     <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                      Aporte Universidad
+                      Contrapartida en Especie (COP)
                     </label>
                     <p className="text-2xl font-semibold mt-2">
                       {formatCurrency(project.university_contribution)}

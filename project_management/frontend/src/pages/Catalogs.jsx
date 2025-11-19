@@ -44,7 +44,6 @@ const catalogTypes = [
   { id: "project-types", name: "Tipos de Proyecto", icon: FileType },
   { id: "financing-types", name: "Tipos de Financiación", icon: CreditCard },
   { id: "execution-modalities", name: "Modalidades de Ejecución", icon: SettingsIcon },
-  { id: "contracting-modalities", name: "Modalidades de Contratación", icon: Tag },
   { id: "project-states", name: "Estados de Proyecto", icon: MapPin },
   { id: "officials", name: "Funcionarios Ordenadores", icon: Users },
 ]
@@ -879,46 +878,6 @@ export default function Catalogs() {
             </div>
           </div>
         )
-
-      case "contracting-modalities":
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium block mb-2">
-                Nombre de la Modalidad <span className="text-error">*</span>
-              </label>
-              <Input
-                value={formData.name || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Nombre de la modalidad de contratación"
-                required
-                maxLength={100}
-              />
-              <p className="text-xs text-right text-neutral-500 mt-1">
-                {(formData.name || "").length}/100
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium block mb-2">
-                Descripción
-              </label>
-              <Textarea
-                value={formData.description || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Descripción de la modalidad"
-                rows={3}
-              />
-              <p className="text-xs text-right text-neutral-500 mt-1">
-                {(formData.description || "").length} caracteres
-              </p>
-            </div>
-          </div>
-        )
-
       case "project-states":
         return (
           <div className="space-y-4">
