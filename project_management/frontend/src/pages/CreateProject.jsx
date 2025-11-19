@@ -99,6 +99,7 @@ export default function CreateProject() {
 
   const [correosSecundarios, setCorreosSecundarios] = useState([])
   const [selectedRupCodes, setSelectedRupCodes] = useState([])
+  const [observacionesGeneralesRup, setObservacionesGeneralesRup] = useState('')
   const [showSecondaryEmails, setShowSecondaryEmails] = useState(false)
   const [duration, setDuration] = useState({ years: 0, months: 0, days: 0 })
   const [showConfirm, setShowConfirm] = useState(false)
@@ -230,13 +231,18 @@ const confirmarCreacion = async () => {
       console.log('🏷️ Asignando códigos RUP:', {
         year: formData.anio_proyecto,
         number: nuevoProyecto.internal_number,
-        codes: selectedRupCodes
+        codes: selectedRupCodes,
+        observations: observacionesGeneralesRup
       })
       
       await rupCodesApi.assignToProject(
         formData.anio_proyecto,
-        nuevoProyecto.internal_number,  // ← CORRECTO
-        selectedRupCodes
+        nuevoProyecto.internal_number,
+        selectedRupCodes.map(code => ({ 
+          rup_code_id: code.rup_code_id, 
+          is_main_code: code.is_main_code 
+        })),
+        observacionesGeneralesRup
       )
     }
 
@@ -711,6 +717,24 @@ const confirmarCreacion = async () => {
                     selectedRupCodes={selectedRupCodes}
                     onSelectionChange={setSelectedRupCodes}
                   />
+                  {/* Observaciones Generales para Códigos RUP */}
+                {selectedRupCodes.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      Observaciones para Códigos RUP
+                    </label>
+                    <textarea
+                      value={observacionesGeneralesRup}
+                      onChange={(e) => setObservacionesGeneralesRup(e.target.value)}
+                      maxLength={500}
+                      placeholder="Observaciones generales para los códigos RUP (opcional)"
+                      className="w-full min-h-[80px] px-3 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <p className="text-xs text-right mt-1 text-text-secondary">
+                      {observacionesGeneralesRup.length}/500
+                    </p>
+                  </div>
+                )}
                 </CardContent>
               </Card>
 

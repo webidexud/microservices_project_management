@@ -1430,7 +1430,8 @@ app.get('/api/projects/:id', async (req, res) => {
         p.administrative_act,
         p.secop_link,
         p.observations,
-        p.is_active,
+        p.rup_codes_general_observations,
+        p.is_active as active,
         p.created_at,
         p.updated_at,
         -- Nombres de las relaciones desde sus tablas correspondientes
@@ -2192,14 +2193,7 @@ app.delete('/api/projects/:id', async (req, res) => {
 // Búsqueda avanzada de códigos RUP con filtros jerárquicos
 app.get('/api/rup-codes/search', async (req, res) => {
   try {
-    const { 
-      query = '', 
-      segment = '',
-      family = '',
-      class_code = '',
-      limit = 50, 
-      offset = 0 
-    } = req.query;
+    const { query = '', segment = '', family = '', class_code = '', product = '', limit = 50, offset = 0 } = req.query;
     
     const client = await pool.connect();
     
@@ -2239,28 +2233,34 @@ app.get('/api/rup-codes/search', async (req, res) => {
       params.push(class_code);
       paramIndex++;
     }
+
+    if (product && product.trim() !== '') {
+      conditions.push(`product_code = $${paramIndex}`);
+      params.push(product.trim());
+      paramIndex++;
+    }
     
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     
+    // Query principal
     // Query principal
     const sqlQuery = `
       SELECT 
         rup_code_id as id,
         rup_code as code,
         code_description as description,
-        hierarchy_level,
-        parent_code,
-        keywords,
         segment_code,
         segment_name,
         family_code,
         family_name,
         class_code,
         class_name,
+        product_code,
+        product_name,
         is_active as active
       FROM rup_codes
       ${whereClause}
-      ORDER BY segment_code, family_code, class_code, rup_code
+      ORDER BY segment_code, family_code, class_code, product_code, rup_code
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     
@@ -2362,7 +2362,29 @@ app.get('/api/rup-codes/classes/:familyCode', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
+// Obtener productos de una clase
+app.get('/api/rup-codes/products/:classCode', async (req, res) => {
+  try {
+    const { classCode } = req.params;
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT DISTINCT 
+        product_code as code,
+        product_name as name
+      FROM rup_codes
+      WHERE is_active = true 
+        AND class_code = $1
+        AND product_code IS NOT NULL
+      ORDER BY product_code`,
+      [classCode]
+    );
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener productos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 // Endpoint legacy (mantener para compatibilidad)
 app.get('/api/rup-codes', async (req, res) => {
   try {
@@ -2396,11 +2418,13 @@ app.get('/api/rup-codes', async (req, res) => {
 });
 
 // Obtener códigos RUP asignados a un proyecto
+// Obtener códigos RUP asignados a un proyecto
 app.get('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) => {
   try {
     const { projectYear, projectNumber } = req.params;
     const client = await pool.connect();
     
+    // Obtener códigos RUP
     const result = await client.query(
       `SELECT 
         prc.project_rup_code_id as id,
@@ -2414,8 +2438,6 @@ app.get('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) 
         rc.class_code,
         rc.class_name,
         prc.is_main_code,
-        prc.participation_percentage,
-        prc.observations,
         prc.assignment_date
       FROM project_rup_codes prc
       INNER JOIN rup_codes rc ON prc.rup_code_id = rc.rup_code_id
@@ -2426,8 +2448,20 @@ app.get('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) 
       [projectYear, projectNumber]
     );
     
+    // Obtener observaciones generales del proyecto
+    const projectResult = await client.query(
+      `SELECT rup_codes_general_observations 
+       FROM projects 
+       WHERE project_year = $1 AND internal_project_number = $2`,
+      [projectYear, projectNumber]
+    );
+    
     client.release();
-    res.json(result.rows);
+    
+    res.json({
+      codes: result.rows,
+      general_observations: projectResult.rows[0]?.rup_codes_general_observations || ''
+    });
   } catch (error) {
     console.error('Error al obtener códigos RUP del proyecto:', error);
     res.status(500).json({ error: error.message });
@@ -2437,7 +2471,7 @@ app.get('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) 
 app.post('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res) => {
   try {
     const { projectYear, projectNumber } = req.params;
-    const { rup_codes } = req.body; // Array de { rup_code_id, is_main_code, participation_percentage, observations }
+    const { rup_codes, general_observations } = req.body;
     
     if (!rup_codes || !Array.isArray(rup_codes)) {
       return res.status(400).json({ error: 'Se requiere un array de códigos RUP' });
@@ -2464,24 +2498,28 @@ app.post('/api/projects/:projectYear/:projectNumber/rup-codes', async (req, res)
             internal_project_number,
             rup_code_id,
             is_main_code,
-            participation_percentage,
-            observations,
             assignment_date,
             assigned_by_user_id,
             is_active
-          ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, 1, true)`,
+          ) VALUES ($1, $2, $3, $4, CURRENT_DATE, 1, true)`,
           [
             projectYear,
             projectNumber,
             rupCode.rup_code_id,
-            rupCode.is_main_code || false,
-            rupCode.participation_percentage || null,
-            rupCode.observations || null
+            rupCode.is_main_code || false
           ]
         );
       });
       
       await Promise.all(insertPromises);
+      
+      // Actualizar observaciones generales en la tabla projects
+      await client.query(
+        `UPDATE projects 
+         SET rup_codes_general_observations = $1 
+         WHERE project_year = $2 AND internal_project_number = $3`,
+        [general_observations || null, projectYear, projectNumber]
+      );
       await client.query('COMMIT');
       
       res.json({ 

@@ -27,6 +27,9 @@ export const rupCodesApi = {
     if (filters.class_code && filters.class_code.trim() !== '') {
       params.append('class_code', filters.class_code.trim())
     }
+    if (filters.product && filters.product.trim() !== '') {
+      params.append('product', filters.product.trim())
+    }
     
     params.append('limit', limit.toString())
     params.append('offset', offset.toString())
@@ -55,6 +58,12 @@ export const rupCodesApi = {
     return handleResponse(response)
   },
 
+  // Obtener productos de una clase
+  getProducts: async (classCode) => {
+    const response = await fetch(`${API_BASE_URL}/rup-codes/products/${classCode}`)
+    return handleResponse(response)
+  },
+
   // Obtener todos (legacy)
   getAll: async () => {
     const response = await fetch(`${API_BASE_URL}/rup-codes`)
@@ -70,13 +79,16 @@ export const rupCodesApi = {
   },
 
   // Asignar códigos RUP a un proyecto
-  assignToProject: async (projectYear, projectNumber, rupCodes) => {
+  assignToProject: async (projectYear, projectNumber, rupCodes, generalObservations = '') => {
     const response = await fetch(
       `${API_BASE_URL}/projects/${projectYear}/${projectNumber}/rup-codes`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rup_codes: rupCodes }),
+        body: JSON.stringify({ 
+          rup_codes: rupCodes,
+          general_observations: generalObservations 
+        }),
       }
     )
     return handleResponse(response)

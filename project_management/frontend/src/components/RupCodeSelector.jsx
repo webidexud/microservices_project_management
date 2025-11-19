@@ -21,53 +21,76 @@ export default function RupCodeSelector({
   const [segments, setSegments] = useState([])
   const [families, setFamilies] = useState([])
   const [classes, setClasses] = useState([])
+  const [products, setProducts] = useState([])
   
   const [selectedSegment, setSelectedSegment] = useState("")
   const [selectedFamily, setSelectedFamily] = useState("")
   const [selectedClass, setSelectedClass] = useState("")
+  const [selectedProduct, setSelectedProduct] = useState("")
   
   const [loadingSegments, setLoadingSegments] = useState(false)
   const [loadingFamilies, setLoadingFamilies] = useState(false)
   const [loadingClasses, setLoadingClasses] = useState(false)
+  const [loadingProducts, setLoadingProducts] = useState(false)
 
   // Cargar segmentos al montar
   useEffect(() => {
     loadSegments()
   }, [])
 
-  // Cargar familias cuando cambia el segmento
+
+// Cargar familias cuando cambia el segmento
   useEffect(() => {
     if (selectedSegment) {
-      loadFamilies(selectedSegment)
       setSelectedFamily("")
       setSelectedClass("")
-      setFamilies([])
+      setSelectedProduct("")
       setClasses([])
+      setProducts([])
+      loadFamilies(selectedSegment)
     }
   }, [selectedSegment])
 
   // Cargar clases cuando cambia la familia
   useEffect(() => {
     if (selectedFamily) {
-      loadClasses(selectedFamily)
       setSelectedClass("")
-      setClasses([])
+      setSelectedProduct("")
+      setProducts([])
+      loadClasses(selectedFamily)
     }
   }, [selectedFamily])
+
+  // Cargar productos cuando cambia la clase
+  useEffect(() => {
+    if (selectedClass) {
+      setSelectedProduct("")
+      loadProducts(selectedClass)
+    }
+  }, [selectedClass])
+  // Cargar productos cuando cambia la clase
+
+  useEffect(() => {
+    if (selectedClass) {
+      loadProducts(selectedClass)
+      setSelectedProduct("")
+      setProducts([])
+    }
+  }, [selectedClass])
 
   // Búsqueda con debounce
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
-      if (searchTerm.length >= 2 || selectedSegment || selectedFamily || selectedClass) {
+      if (searchTerm.length >= 2 || selectedSegment || selectedFamily || selectedClass || selectedProduct) {
         performSearch()
-      } else if (searchTerm.length === 0 && !selectedSegment && !selectedFamily && !selectedClass) {
+      } else if (searchTerm.length === 0 && !selectedSegment && !selectedFamily && !selectedClass && !selectedProduct) {
         setSearchResults([])
         setHasSearched(false)
       }
     }, 400)
 
     return () => clearTimeout(delayDebounce)
-  }, [searchTerm, selectedSegment, selectedFamily, selectedClass])
+  }, [searchTerm, selectedSegment, selectedFamily, selectedClass, selectedProduct])
 
   const loadSegments = async () => {
     setLoadingSegments(true)
@@ -93,15 +116,15 @@ export default function RupCodeSelector({
     }
   }
 
-  const loadClasses = async (familyCode) => {
-    setLoadingClasses(true)
+  const loadProducts = async (classCode) => {
+    setLoadingProducts(true)
     try {
-      const data = await rupCodesApi.getClasses(familyCode)
-      setClasses(data || [])
+      const data = await rupCodesApi.getProducts(classCode)
+      setProducts(data || [])
     } catch (error) {
-      console.error('Error al cargar clases:', error)
+      console.error('Error al cargar productos:', error)
     } finally {
-      setLoadingClasses(false)
+      setLoadingProducts(false)
     }
   }
 
@@ -119,6 +142,9 @@ const performSearch = async () => {
     }
     if (selectedClass && selectedClass.trim() !== '') {
       filters.class_code = selectedClass.trim()
+    }
+    if (selectedProduct && selectedProduct.trim() !== '') {
+      filters.product = selectedProduct.trim()
     }
 
     console.log('🔍 Buscando con:', { searchTerm, filters })
@@ -140,13 +166,27 @@ const performSearch = async () => {
     setSelectedSegment("")
     setSelectedFamily("")
     setSelectedClass("")
+    setSelectedProduct("")
     setFamilies([])
     setClasses([])
+    setProducts([])
     setSearchTerm("")
   }
 
   const isSelected = (rupCodeId) => {
     return selectedRupCodes.some((selected) => selected.rup_code_id === rupCodeId)
+  }
+
+  const loadClasses = async (familyCode) => {
+    setLoadingClasses(true)
+    try {
+      const data = await rupCodesApi.getClasses(familyCode)
+      setClasses(data || [])
+    } catch (error) {
+      console.error('Error al cargar clases:', error)
+    } finally {
+      setLoadingClasses(false)
+    }
   }
 
   const handleAdd = (code) => {
@@ -159,9 +199,8 @@ const performSearch = async () => {
       segment_name: code.segment_name,
       family_name: code.family_name,
       class_name: code.class_name,
-      is_main_code: selectedRupCodes.length === 0,
-      participation_percentage: null,
-      observations: "",
+      product_name: code.product_name,
+      is_main_code: selectedRupCodes.length === 0
     }
 
     onSelectionChange([...selectedRupCodes, newCode])
@@ -190,23 +229,7 @@ const performSearch = async () => {
     onSelectionChange(updatedCodes)
   }
 
-  const handlePercentageChange = (rupCodeId, value) => {
-    const updatedCodes = selectedRupCodes.map((code) =>
-      code.rup_code_id === rupCodeId
-        ? { ...code, participation_percentage: value ? parseFloat(value) : null }
-        : code
-    )
-    onSelectionChange(updatedCodes)
-  }
-
-  const handleObservationsChange = (rupCodeId, value) => {
-    const updatedCodes = selectedRupCodes.map((code) =>
-      code.rup_code_id === rupCodeId ? { ...code, observations: value } : code
-    )
-    onSelectionChange(updatedCodes)
-  }
-
-  const hasActiveFilters = selectedSegment || selectedFamily || selectedClass
+  const hasActiveFilters = selectedSegment || selectedFamily || selectedClass || selectedProduct
 
   return (
     <div className="space-y-4">
@@ -282,44 +305,6 @@ const performSearch = async () => {
                       </Button>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-2 pt-2 border-t">
-                    <div>
-                      <label className="text-xs text-text-secondary block mb-1">
-                        % Participación (opcional)
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={code.participation_percentage || ""}
-                          onChange={(e) =>
-                            handlePercentageChange(code.rup_code_id, e.target.value)
-                          }
-                          placeholder="0.00"
-                          className="text-sm"
-                        />
-                        <span className="text-sm text-text-secondary">%</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-text-secondary block mb-1">
-                        Observaciones (opcional)
-                      </label>
-                      <Input
-                        value={code.observations || ""}
-                        onChange={(e) =>
-                          handleObservationsChange(code.rup_code_id, e.target.value)
-                        }
-                        placeholder="Notas adicionales..."
-                        maxLength={200}
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
                 </div>
               ))}
             </div>
@@ -347,7 +332,7 @@ const performSearch = async () => {
               {showFilters ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               {hasActiveFilters && (
                 <Badge variant="secondary" className="ml-1">
-                  {[selectedSegment, selectedFamily, selectedClass].filter(Boolean).length}
+                  {[selectedSegment, selectedFamily, selectedClass, selectedProduct].filter(Boolean).length}
                 </Badge>
               )}
             </Button>
@@ -387,7 +372,7 @@ const performSearch = async () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {/* Segmento */}
                 <div>
                   <label className="text-xs text-text-secondary block mb-1">
@@ -457,6 +442,31 @@ const performSearch = async () => {
                     {classes.map((cls) => (
                       <option key={cls.code} value={cls.code}>
                         {cls.code} - {cls.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                {/* Producto */}
+                <div>
+                  <label className="text-xs text-text-secondary block mb-1">
+                    📦 Producto
+                  </label>
+                  <Select 
+                    value={selectedProduct} 
+                    onChange={(e) => setSelectedProduct(e.target.value)}
+                    disabled={!selectedClass || loadingProducts}
+                    className="text-sm"
+                  >
+                    <option value="">
+                      {!selectedClass 
+                        ? "Selecciona una clase" 
+                        : loadingProducts 
+                        ? "Cargando..." 
+                        : "Todos los productos"}
+                    </option>
+                    {products.map((prod) => (
+                      <option key={prod.code} value={prod.code}>
+                        {prod.code} - {prod.name}
                       </option>
                     ))}
                   </Select>

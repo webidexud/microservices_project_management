@@ -985,7 +985,7 @@ export default function ProjectView() {
                     Total Códigos
                   </p>
                   <p className="text-3xl font-semibold text-primary">
-                    {projectRupCodes?.length || 0}
+                    {projectRupCodes?.codes?.length || 0}
                   </p>
                 </CardContent>
               </Card>
@@ -996,7 +996,7 @@ export default function ProjectView() {
                     Código Principal
                   </p>
                   <p className="text-3xl font-semibold text-success">
-                    {projectRupCodes?.filter(code => code.is_main_code).length || 0}
+                    {projectRupCodes?.codes?.filter(code => code.is_main_code).length || 0}
                   </p>
                 </CardContent>
               </Card>
@@ -1007,14 +1007,14 @@ export default function ProjectView() {
                     Códigos Secundarios
                   </p>
                   <p className="text-3xl font-semibold text-info">
-                    {projectRupCodes?.filter(code => !code.is_main_code).length || 0}
+                    {projectRupCodes?.codes?.filter(code => !code.is_main_code).length || 0}
                   </p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Lista de códigos RUP */}
-            {projectRupCodes && projectRupCodes.length > 0 ? (
+            {projectRupCodes?.codes && projectRupCodes.codes.length > 0 ? (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
@@ -1023,7 +1023,7 @@ export default function ProjectView() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {projectRupCodes.map((rupCode, index) => (
+                    {projectRupCodes.codes.map((rupCode, index) => (
                       <div
                         key={rupCode.id || index}
                         className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-5 bg-neutral-50 dark:bg-neutral-800/50 hover:shadow-md transition-shadow"
@@ -1047,7 +1047,7 @@ export default function ProjectView() {
                                 )}
                               </div>
                               <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                                {rupCode.description}
+                                {rupCode.product_name || rupCode.description}
                               </p>
                             </div>
                           </div>
@@ -1064,7 +1064,7 @@ export default function ProjectView() {
                         </div>
 
                         {/* Jerarquía RUP */}
-                        <div className="grid grid-cols-3 gap-4 bg-white dark:bg-neutral-900 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
+                        <div className="grid grid-cols-4 gap-4 bg-white dark:bg-neutral-900 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
                           <div>
                             <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
                               Segmento
@@ -1096,6 +1096,17 @@ export default function ProjectView() {
                             </p>
                             <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
                               {rupCode.class_name}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
+                              Producto
+                            </p>
+                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                              {rupCode.product_code || rupCode.code}
+                            </p>
+                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                              {rupCode.product_name || rupCode.description}
                             </p>
                           </div>
                         </div>
@@ -1131,6 +1142,22 @@ export default function ProjectView() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Observaciones Generales */}
+                  {projectRupCodes?.general_observations && (
+                    <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+                      <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3 flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Observaciones Generales
+                      </h3>
+                      <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
+                        <p className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
+                          {projectRupCodes.general_observations}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                 </CardContent>
               </Card>
             ) : (

@@ -140,6 +140,7 @@ export default function EditProject() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [duration, setDuration] = useState({ years: 0, months: 0, days: 0 })
   const [selectedRupCodes, setSelectedRupCodes] = useState([])
+  const [observacionesGeneralesRup, setObservacionesGeneralesRup] = useState('')
 
   // Formatear número con separadores de miles
   const formatNumber = (value) => {
@@ -228,27 +229,63 @@ export default function EditProject() {
   }, [project])
 
 // Cargar los códigos RUP ya asignados cuando estén disponibles
+  // Cargar los códigos RUP ya asignados cuando estén disponibles
+  // Cargar los códigos RUP ya asignados cuando estén disponibles
   useEffect(() => {
-    if (projectRupCodes && projectRupCodes.length > 0) {
-      console.log('📦 Códigos RUP del proyecto:', projectRupCodes)
-      
-      const formattedCodes = projectRupCodes.map(code => ({
-        rup_code_id: code.rup_code_id,
-        code: code.code,
-        description: code.description,
-        segment_code: code.segment_code,
-        segment_name: code.segment_name,
-        family_code: code.family_code,
-        family_name: code.family_name,
-        class_code: code.class_code,
-        class_name: code.class_name,
-        is_main_code: code.is_main_code,
-        participation_percentage: code.participation_percentage,
-        observations: code.observations
-      }))
-      
-      console.log('✅ Códigos formateados:', formattedCodes)
-      setSelectedRupCodes(formattedCodes)
+    console.log('🔍 projectRupCodes recibido:', projectRupCodes)
+    
+    if (projectRupCodes) {
+      // Si el backend devuelve la estructura nueva {codes: [], general_observations: ''}
+      if (projectRupCodes.codes && Array.isArray(projectRupCodes.codes)) {
+        console.log('📦 Estructura nueva detectada')
+        
+        if (projectRupCodes.codes.length > 0) {
+          const formattedCodes = projectRupCodes.codes.map(code => ({
+            rup_code_id: code.rup_code_id,
+            code: code.code,
+            description: code.description,
+            segment_code: code.segment_code,
+            segment_name: code.segment_name,
+            family_code: code.family_code,
+            family_name: code.family_name,
+            class_code: code.class_code,
+            class_name: code.class_name,
+            product_code: code.product_code,
+            product_name: code.product_name,
+            is_main_code: code.is_main_code
+          }))
+          
+          console.log('✅ Códigos formateados:', formattedCodes)
+          setSelectedRupCodes(formattedCodes)
+        }
+        
+        // Cargar observaciones generales si existen
+        if (projectRupCodes.general_observations) {
+          setObservacionesGeneralesRup(projectRupCodes.general_observations)
+        }
+      }
+      // Si el backend devuelve array directo (estructura vieja, por compatibilidad)
+      else if (Array.isArray(projectRupCodes) && projectRupCodes.length > 0) {
+        console.log('📦 Estructura vieja detectada (array directo)')
+        
+        const formattedCodes = projectRupCodes.map(code => ({
+          rup_code_id: code.rup_code_id,
+          code: code.code,
+          description: code.description,
+          segment_code: code.segment_code,
+          segment_name: code.segment_name,
+          family_code: code.family_code,
+          family_name: code.family_name,
+          class_code: code.class_code,
+          class_name: code.class_name,
+          product_code: code.product_code,
+          product_name: code.product_name,
+          is_main_code: code.is_main_code
+        }))
+        
+        console.log('✅ Códigos formateados:', formattedCodes)
+        setSelectedRupCodes(formattedCodes)
+      }
     }
   }, [projectRupCodes])
 
@@ -353,9 +390,13 @@ export default function EditProject() {
       // Actualizar códigos RUP si el proyecto tiene internal_number
       if (proyectoActualizado?.internal_number) {
         await rupCodesApi.assignToProject(
-          formData.anio_proyecto,
-          proyectoActualizado.internal_number,
-          selectedRupCodes
+          project.project_year,
+          project.internal_project_number,
+          selectedRupCodes.map(code => ({ 
+            rup_code_id: code.rup_code_id, 
+            is_main_code: code.is_main_code 
+          })),
+          observacionesGeneralesRup
         )
       }
 
@@ -940,6 +981,24 @@ export default function EditProject() {
                     selectedRupCodes={selectedRupCodes}
                     onSelectionChange={setSelectedRupCodes}
                   />
+                  {/* Observaciones Generales para Códigos RUP */}
+                  {selectedRupCodes.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Observaciones para Códigos RUP
+                      </label>
+                      <textarea
+                        value={observacionesGeneralesRup}
+                        onChange={(e) => setObservacionesGeneralesRup(e.target.value)}
+                        maxLength={500}
+                        placeholder="Observaciones generales para los códigos RUP (opcional)"
+                        className="w-full min-h-[80px] px-3 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <p className="text-xs text-right mt-1 text-text-secondary">
+                        {observacionesGeneralesRup.length}/500
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
