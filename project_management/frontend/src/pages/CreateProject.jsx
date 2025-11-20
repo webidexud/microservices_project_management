@@ -442,10 +442,11 @@ const confirmarCreacion = async () => {
                     <h2 className="text-xl font-semibold">Clasificación del Proyecto</h2>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-5">
+                  {/* Fila 1: Estado + Tipo de Proyecto */}
+                  <div className="grid grid-cols-2 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Estado <span className="text-danger">*</span>
+                        Estado del Proyecto <span className="text-danger">*</span>
                       </label>
                       <SearchableSelect
                         name="estado_proyecto_id"
@@ -470,10 +471,13 @@ const confirmarCreacion = async () => {
                         required
                       />
                     </div>
+                  </div>
 
+                  {/* Fila 2: Tipo de Financiación + Modalidad de Ejecución */}
+                  <div className="grid grid-cols-2 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Financiación <span className="text-danger">*</span>
+                        Tipo de Financiación <span className="text-danger">*</span>
                       </label>
                       <SearchableSelect
                         name="tipo_financiacion_id"
@@ -484,9 +488,7 @@ const confirmarCreacion = async () => {
                         required
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Modalidad de Ejecución <span className="text-danger">*</span>
