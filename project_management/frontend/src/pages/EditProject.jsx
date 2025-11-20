@@ -546,12 +546,13 @@ export default function EditProject() {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Número Proyecto Externo
+                        Número Proyecto Externo <span className="text-danger">*</span>
                       </label>
                       <Input
                         name="numero_proyecto_externo"
                         value={formData.numero_proyecto_externo}
                         onChange={handleInputChange}
+                        required  // ← NUEVO
                         maxLength={20}
                         placeholder="Ej: CONV-2024-001"
                       />
@@ -776,13 +777,14 @@ export default function EditProject() {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Aporte Entidad (COP)
+                        Aporte Entidad (COP) <span className="text-danger">*</span>
                       </label>
                       <Input
                         name="aporte_entidad"
                         value={formData.aporte_entidad}
-                        disabled
-                        className="bg-gray-100 dark:bg-gray-800"
+                        onChange={handleNumberInput}  // ← NUEVO: ahora es editable
+                        required  // ← NUEVO
+                        placeholder="0"
                       />
                     </div>
 
@@ -829,13 +831,14 @@ export default function EditProject() {
                   <div className="grid grid-cols-3 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Fecha Suscripción
+                        Fecha Suscripción <span className="text-danger">*</span>
                       </label>
                       <Input
                         type="date"
                         name="fecha_suscripcion"
                         value={formData.fecha_suscripcion}
                         onChange={handleInputChange}
+                        required 
                       />
                     </div>
 

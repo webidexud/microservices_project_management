@@ -353,12 +353,13 @@ const confirmarCreacion = async () => {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Número Proyecto Externo
+                        Número Proyecto Externo <span className="text-danger">*</span>
                       </label>
                       <Input
                         name="numero_proyecto_externo"
                         value={formData.numero_proyecto_externo}
                         onChange={handleInputChange}
+                        required
                         maxLength={20}
                         placeholder="Ej: CONV-2024-001"
                       />
@@ -587,12 +588,14 @@ const confirmarCreacion = async () => {
 
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Aporte Entidad (COP)
+                        Aporte Entidad (COP) <span className="text-danger">*</span>
                       </label>
                       <Input
+                        name="aporte_entidad"
                         value={formData.aporte_entidad}
-                        disabled
-                        className="bg-gray-100 cursor-not-allowed"
+                        onChange={handleNumberInput}
+                        required
+                        placeholder="0"
                       />
                     </div>
                   </div>
@@ -626,13 +629,14 @@ const confirmarCreacion = async () => {
                   <div className="grid grid-cols-3 gap-5">
                     <div>
                       <label className="text-sm font-medium block mb-2">
-                        Fecha de Suscripción
+                        Fecha de Suscripción <span className="text-danger">*</span>
                       </label>
                       <Input
                         type="date"
                         name="fecha_suscripcion"
                         value={formData.fecha_suscripcion}
                         onChange={handleInputChange}
+                        required
                       />
                     </div>
 
