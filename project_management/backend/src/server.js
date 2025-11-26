@@ -1179,7 +1179,10 @@ function validateProjectData(data) {
     { field: 'valor_proyecto', name: 'Valor del proyecto' },
     { field: 'fecha_inicio', name: 'Fecha de inicio' },
     { field: 'fecha_finalizacion', name: 'Fecha de finalización' },
-    { field: 'funcionario_ordenador_id', name: 'Funcionario ordenador' }
+    { field: 'funcionario_ordenador_id', name: 'Funcionario ordenador' },
+    { field: 'session_type', name: 'Tipo de sesión' },
+    { field: 'minutes_date', name: 'Fecha del acta' },
+    { field: 'minutes_number', name: 'Número del acta' }
   ];
   
   for (const { field, name } of requiredFields) {
@@ -1271,14 +1274,13 @@ app.get('/api/projects/recent', async (req, res) => {
 });
 
 
-// GET - Obtener un proyecto por ID
+// GET - Obtener proyecto por ID
 app.get('/api/projects/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const client = await pool.connect();
     
-    // Obtener proyecto principal con TODOS los datos necesarios
-    const projectResult = await client.query(
+    const result = await client.query(
       `SELECT 
         p.project_id,
         p.project_year,
@@ -1308,18 +1310,16 @@ app.get('/api/projects/:id', async (req, res) => {
         p.administrative_act,
         p.secop_link,
         p.observations,
-        p.rup_codes_general_observations,
-        p.is_active as active,
-        p.created_at,
-        p.updated_at,
-        -- Nombres de las relaciones desde sus tablas correspondientes
+        p.session_type,
+        p.minutes_date,
+        p.minutes_number,
         e.entity_name,
         ed.department_name,
         ps.status_name,
         pt.type_name as project_type,
         ft.financing_name as financing_type,
         em.modality_name as execution_modality,
-        CONCAT(oo.first_name, ' ', COALESCE(oo.second_name || ' ', ''), oo.first_surname, ' ', COALESCE(oo.second_surname, '')) as ordering_official_name
+        CONCAT(oo.first_name, ' ', oo.first_surname) as ordering_official_name
       FROM projects p
       LEFT JOIN entities e ON p.entity_id = e.entity_id
       LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
@@ -1332,7 +1332,7 @@ app.get('/api/projects/:id', async (req, res) => {
       [id]
     );
     
-    if (projectResult.rows.length === 0) {
+    if (result.rows.length === 0) {
       client.release();
       return res.status(404).json({ error: 'Proyecto no encontrado' });
     }
@@ -1357,7 +1357,7 @@ app.get('/api/projects/:id', async (req, res) => {
     
     client.release();
     
-    const project = projectResult.rows[0];
+    const project = result.rows[0];
     project.secondary_emails = emailsResult.rows.map(row => row.email);
     project.total_extension_days = parseInt(modificationsResult.rows[0]?.total_extension_days || 0);
     project.final_end_date_with_extensions = modificationsResult.rows[0]?.final_end_date_with_extensions || project.end_date;
@@ -1410,7 +1410,10 @@ app.post('/api/projects', async (req, res) => {
       acto_administrativo,
       enlace_secop,
       observaciones,
-      correos_secundarios
+      correos_secundarios,
+      session_type,          
+      minutes_date,           
+      minutes_number 
     } = req.body;
     
     // Limpiar números (quitar separadores de miles)
@@ -1437,7 +1440,7 @@ app.post('/api/projects', async (req, res) => {
     console.log(`🔢 Generando proyecto: ${anio_proyecto}-${internalNumber}`);
     
     // 6. Insertar proyecto principal
-    const projectResult = await client.query(
+   const projectResult = await client.query(
       `INSERT INTO projects (
         project_year,
         internal_project_number,
@@ -1465,12 +1468,15 @@ app.post('/api/projects', async (req, res) => {
         administrative_act,
         secop_link,
         observations,
+        session_type,
+        minutes_date,
+        minutes_number,
         is_active,
         created_by_user_id
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, true, NULL
+        $21, $22, $23, $24, $25, $26, $27, $28, $29, true, NULL
       ) RETURNING project_id`,
       [
         anio_proyecto,
@@ -1498,10 +1504,12 @@ app.post('/api/projects', async (req, res) => {
         correo_principal || null,
         acto_administrativo || null,
         enlace_secop || null,
-        observaciones || null
+        observaciones || null,
+        session_type,
+        minutes_date,
+        minutes_number
       ]
     );
-    
     const projectId = projectResult.rows[0].project_id;
     
     console.log(`✅ Proyecto creado con ID: ${projectId}`);
@@ -1704,7 +1712,7 @@ app.get('/api/dashboard/charts', async (req, res) => {
 
 // PUT - Actualizar proyecto existente
 app.put('/api/projects/:id', async (req, res) => {
-  const client = await pool.connect();
+  const client = await pool.connect(); // ✅ Mover FUERA del try
   
   try {
     const { id } = req.params;
@@ -1755,7 +1763,10 @@ app.put('/api/projects/:id', async (req, res) => {
       acto_administrativo,
       enlace_secop,
       observaciones,
-      correos_secundarios
+      correos_secundarios,
+      session_type,
+      minutes_date,
+      minutes_number
     } = req.body;
 
     
@@ -1780,7 +1791,7 @@ app.put('/api/projects/:id', async (req, res) => {
     console.log(`🔄 Actualizando proyecto ID: ${id}`);
     
     // 6. Actualizar proyecto principal
-    const projectResult = await client.query(
+    const projectResult = await client.query( 
       `UPDATE projects SET
         project_year = $1,
         external_project_number = $2,
@@ -1807,9 +1818,12 @@ app.put('/api/projects/:id', async (req, res) => {
         administrative_act = $23,
         secop_link = $24,
         observations = $25,
+        session_type = $26,
+        minutes_date = $27,
+        minutes_number = $28,
         updated_at = CURRENT_TIMESTAMP,
         updated_by_user_id = NULL
-      WHERE project_id = $26
+      WHERE project_id = $29
       RETURNING project_id`,
       [
         anio_proyecto,
@@ -1837,6 +1851,9 @@ app.put('/api/projects/:id', async (req, res) => {
         acto_administrativo || null,
         enlace_secop || null,
         observaciones || null,
+        session_type,
+        minutes_date,
+        minutes_number,
         id
       ]
     );
@@ -1887,7 +1904,7 @@ app.put('/api/projects/:id', async (req, res) => {
       }
     });
     
-  } catch (error) {
+    } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Error al actualizar proyecto:', error);
     res.status(500).json({ 

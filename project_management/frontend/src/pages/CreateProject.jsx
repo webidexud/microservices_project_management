@@ -89,6 +89,9 @@ export default function CreateProject() {
     acto_administrativo: "",
     enlace_secop: "",
     observaciones: "",
+    session_type: "",         
+    minutes_date: "",        
+    minutes_number: "",
   })
 
   const [correosSecundarios, setCorreosSecundarios] = useState([])
@@ -430,6 +433,32 @@ const confirmarCreacion = async () => {
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      Funcionario Ordenador <span className="text-danger">*</span>
+                    </label>
+                    <SearchableSelect
+                      name="funcionario_ordenador_id"
+                      value={formData.funcionario_ordenador_id}
+                      onChange={handleInputChange}
+                      options={officials || []}
+                      placeholder="Seleccione funcionario ordenador..."
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      Acto Administrativo
+                    </label>
+                    <Input
+                      name="acto_administrativo"
+                      value={formData.acto_administrativo}
+                      onChange={handleInputChange}
+                      maxLength={50}
+                      placeholder="Ej: Resolución 001-2024"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -667,19 +696,63 @@ const confirmarCreacion = async () => {
                       />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+              
+              {/* DATOS DE APROBACIÓN DEL PROYECTO */}
+              <Card>
+                <CardContent className="p-6 space-y-5">
+                  <div className="flex items-center gap-3 pb-3 border-b">
+                    <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
+                      ✅
+                    </div>
+                    <h2 className="text-xl font-semibold">Datos de Aprobación del Proyecto</h2>
+                  </div>
 
-                  <div>
-                    <label className="text-sm font-medium block mb-2">
-                      Funcionario Ordenador <span className="text-danger">*</span>
-                    </label>
-                    <SearchableSelect
-                      name="funcionario_ordenador_id"
-                      value={formData.funcionario_ordenador_id}
-                      onChange={handleInputChange}
-                      options={officials || []}
-                      placeholder="Seleccione funcionario ordenador..."
-                      required
-                    />
+                  <div className="grid grid-cols-3 gap-5">
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Tipo de Sesión <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        name="session_type"
+                        value={formData.session_type}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Seleccione...</option>
+                        <option value="Ordinaria">Sesión Ordinaria</option>
+                        <option value="Extraordinaria">Sesión Extraordinaria</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Fecha del Acta <span className="text-danger">*</span>
+                      </label>
+                      <Input
+                        type="date"
+                        name="minutes_date"
+                        value={formData.minutes_date}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Número del Acta <span className="text-danger">*</span>
+                      </label>
+                      <Input
+                        name="minutes_number"
+                        value={formData.minutes_number}
+                        onChange={handleInputChange}
+                        required
+                        maxLength={50}
+                        placeholder="Ej: 001-2024"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -734,8 +807,8 @@ const confirmarCreacion = async () => {
                     <h2 className="text-xl font-semibold">Información Adicional</h2>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-5">
-                    <div>
+                  <div className="grid grid-cols-1 gap-5">
+                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Correo Principal
                       </label>
@@ -745,19 +818,6 @@ const confirmarCreacion = async () => {
                         value={formData.correo_principal}
                         onChange={handleInputChange}
                         placeholder="correo@udistrital.edu.co"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium block mb-2">
-                        Acto Administrativo
-                      </label>
-                      <Input
-                        name="acto_administrativo"
-                        value={formData.acto_administrativo}
-                        onChange={handleInputChange}
-                        maxLength={50}
-                        placeholder="Resolución o acto"
                       />
                     </div>
                   </div>
