@@ -40,6 +40,63 @@ export default function ModificationsDialog({ project, open, onClose }) {
     justification: "",
     administrative_act: "",
     approval_date: "",
+    // Campos nuevos:
+    extension_period_text: "",
+    cdp: "",
+    cdp_value: "",
+    rp: "",
+    rp_value: "",
+    supervisor_name: "",
+    supervisor_id: "",
+    supervisor_entity_name: "",
+    entity_legal_representative_name: "",
+    entity_legal_representative_id: "",
+    entity_legal_representative_id_type: "CC",
+    ordering_official_id: "",
+    requires_policy_update: false,
+    policy_update_description: "",
+    payment_method_modification: "",
+    // Campos de suspensión:
+    suspension_start_date: "",
+    suspension_reason: "",
+    suspension_days: "",
+    expected_restart_date: "",
+    suspension_observations: "",
+    // Campos de reinicio:
+    restart_date: "",
+    actual_suspension_days: "",
+    restart_observations: "",
+    // Campos de liquidación:
+    liquidation_date: "",
+    final_value: "",
+    liquidation_act_number: "",
+    liquidation_act_date: "",
+    penalties_amount: "",
+    final_balance: "",
+    has_pending_obligations: false,
+    pending_obligations_description: "",
+    liquidation_observations: "",
+    // Campos de cambio de cláusulas:
+    clause_number: "",
+    clause_name: "",
+    original_clause_text: "",
+    new_clause_text: "",
+    requires_resource_liberation: false,
+    cdp_to_release: "",
+    rp_to_release: "",
+    liberation_amount: "",
+    // Campos de cesión:
+    assignment_type: "TOTAL",
+    assignor_name: "",
+    assignor_id: "",
+    assignee_name: "",
+    assignee_id: "",
+    assignee_id_type: "CC",
+    assignment_date: "",
+    assignment_value: "",
+    assignment_percentage: "",
+    related_derived_project_id: "",
+    assignment_observations: "",
   })
 
   const queryClient = useQueryClient()
@@ -96,6 +153,63 @@ export default function ModificationsDialog({ project, open, onClose }) {
       justification: "",
       administrative_act: "",
       approval_date: "",
+      // Campos nuevos:
+      extension_period_text: "",
+      cdp: "",
+      cdp_value: "",
+      rp: "",
+      rp_value: "",
+      supervisor_name: "",
+      supervisor_id: "",
+      supervisor_entity_name: "",
+      entity_legal_representative_name: "",
+      entity_legal_representative_id: "",
+      entity_legal_representative_id_type: "CC",
+      ordering_official_id: "",
+      requires_policy_update: false,
+      policy_update_description: "",
+      payment_method_modification: "",
+      // Campos de suspensión:
+      suspension_start_date: "",
+      suspension_reason: "",
+      suspension_days: "",
+      expected_restart_date: "",
+      suspension_observations: "",
+      // Campos de reinicio:
+      restart_date: "",
+      actual_suspension_days: "",
+      restart_observations: "",
+      // Campos de liquidación:
+      liquidation_date: "",
+      final_value: "",
+      liquidation_act_number: "",
+      liquidation_act_date: "",
+      penalties_amount: "",
+      final_balance: "",
+      has_pending_obligations: false,
+      pending_obligations_description: "",
+      liquidation_observations: "",
+      // Campos de cambio de cláusulas:
+      clause_number: "",
+      clause_name: "",
+      original_clause_text: "",
+      new_clause_text: "",
+      requires_resource_liberation: false,
+      cdp_to_release: "",
+      rp_to_release: "",
+      liberation_amount: "",
+      // Campos de cesión:
+      assignment_type: "TOTAL",
+      assignor_name: "",
+      assignor_id: "",
+      assignee_name: "",
+      assignee_id: "",
+      assignee_id_type: "CC",
+      assignment_date: "",
+      assignment_value: "",
+      assignment_percentage: "",
+      related_derived_project_id: "",
+      assignment_observations: "",
     })
   }
 
@@ -134,42 +248,129 @@ export default function ModificationsDialog({ project, open, onClose }) {
     return parseFloat(value.toString().replace(/\./g, "")) || 0
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    
-    // Validaciones
-    if (!formData.justification.trim()) {
-      alert("La justificación es obligatoria")
-      return
-    }
-    
-    if (formData.modification_type === "ADDITION" && !formData.addition_value) {
-      alert("El valor de adición es obligatorio")
-      return
-    }
-    
-    if (formData.modification_type === "EXTENSION" && (!formData.extension_days || !formData.new_end_date)) {
-      alert("Los días de extensión y la nueva fecha son obligatorios")
-      return
-    }
-    
-    if (formData.modification_type === "BOTH" && (!formData.addition_value || !formData.extension_days || !formData.new_end_date)) {
-      alert("Todos los campos son obligatorios para modificaciones tipo AMBAS")
-      return
-    }
-    
-    const datos = {
-      modification_type: formData.modification_type,
-      addition_value: formData.addition_value ? cleanNumber(formData.addition_value) : null,
-      extension_days: formData.extension_days ? parseInt(formData.extension_days) : null,
-      new_end_date: formData.new_end_date || null,
-      justification: formData.justification,
-      administrative_act: formData.administrative_act || null,
-      approval_date: formData.approval_date || null,
-    }
-    
-    createMutation.mutate(datos)
+const handleSubmit = (e) => {
+  e.preventDefault()
+  
+  // Validaciones básicas
+  if (!formData.justification.trim()) {
+    alert("La justificación es obligatoria")
+    return
   }
+  
+  if (formData.modification_type === "ADDITION" && !formData.addition_value) {
+    alert("El valor de adición es obligatorio")
+    return
+  }
+  
+  if (formData.modification_type === "EXTENSION" && (!formData.extension_days || !formData.new_end_date)) {
+    alert("Los días de extensión y la nueva fecha son obligatorios")
+    return
+  }
+  
+if (formData.modification_type === "SUSPENSION" && (!formData.suspension_start_date || !formData.suspension_reason)) {
+  alert("La fecha de inicio y el motivo de suspensión son obligatorios")
+  return
+}
+
+if (formData.modification_type === "RESTART" && !formData.restart_date) {
+  alert("La fecha de reinicio es obligatoria")
+  return
+}
+if (formData.modification_type === "LIQUIDATION" && (!formData.liquidation_date || !formData.final_value)) {
+  alert("La fecha de liquidación y el valor final son obligatorios")
+  return
+}
+if (formData.modification_type === "MODIFICATION" && (!formData.clause_number || !formData.clause_name || !formData.new_clause_text)) {
+  alert("El número de cláusula, nombre y nuevo texto son obligatorios")
+  return
+}
+if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !formData.assignee_id)) {
+  alert("El nombre y la identificación del cesionario son obligatorios")
+  return
+}
+  
+  // Validaciones específicas para adiciones
+  if (formData.modification_type === "ADDITION" || formData.modification_type === "BOTH") {
+    if (!formData.cdp || !formData.rp) {
+      alert("CDP y RP son obligatorios para adiciones presupuestales")
+      return
+    }
+    
+    if (!formData.cdp_value || !formData.rp_value) {
+      alert("Los valores de CDP y RP son obligatorios para adiciones presupuestales")
+      return
+    }
+  }
+  
+  const datos = {
+    modification_type: formData.modification_type,
+    addition_value: formData.addition_value ? cleanNumber(formData.addition_value) : null,
+    extension_days: formData.extension_days ? parseInt(formData.extension_days) : null,
+    new_end_date: formData.new_end_date || null,
+    justification: formData.justification,
+    administrative_act: formData.administrative_act || null,
+    approval_date: formData.approval_date || null,
+    // Campos de adición:
+    extension_period_text: formData.extension_period_text || null,
+    cdp: formData.cdp || null,
+    cdp_value: formData.cdp_value ? cleanNumber(formData.cdp_value) : null,
+    rp: formData.rp || null,
+    rp_value: formData.rp_value ? cleanNumber(formData.rp_value) : null,
+    supervisor_name: formData.supervisor_name || null,
+    supervisor_id: formData.supervisor_id || null,
+    supervisor_entity_name: formData.supervisor_entity_name || null,
+    entity_legal_representative_name: formData.entity_legal_representative_name || null,
+    entity_legal_representative_id: formData.entity_legal_representative_id || null,
+    entity_legal_representative_id_type: formData.entity_legal_representative_id_type || null,
+    ordering_official_id: formData.ordering_official_id ? parseInt(formData.ordering_official_id) : null,
+    requires_policy_update: formData.requires_policy_update || false,
+    policy_update_description: formData.policy_update_description || null,
+    payment_method_modification: formData.payment_method_modification || null,
+    // Campos de suspensión:
+    suspension_start_date: formData.suspension_start_date || null,
+    suspension_reason: formData.suspension_reason || null,
+    suspension_days: formData.suspension_days ? parseInt(formData.suspension_days) : null,
+    expected_restart_date: formData.expected_restart_date || null,
+    suspension_observations: formData.suspension_observations || null,
+    // Campos de reinicio:
+    restart_date: formData.restart_date || null,
+    actual_suspension_days: formData.actual_suspension_days ? parseInt(formData.actual_suspension_days) : null,
+    restart_observations: formData.restart_observations || null,
+    // Campos de liquidación:
+    liquidation_date: formData.liquidation_date || null,
+    final_value: formData.final_value ? cleanNumber(formData.final_value) : null,
+    liquidation_act_number: formData.liquidation_act_number || null,
+    liquidation_act_date: formData.liquidation_act_date || null,
+    penalties_amount: formData.penalties_amount ? cleanNumber(formData.penalties_amount) : null,
+    final_balance: formData.final_balance ? cleanNumber(formData.final_balance) : null,
+    has_pending_obligations: formData.has_pending_obligations || false,
+    pending_obligations_description: formData.pending_obligations_description || null,
+    liquidation_observations: formData.liquidation_observations || null,
+    // Campos de cambio de cláusulas:
+    clause_number: formData.clause_number || null,
+    clause_name: formData.clause_name || null,
+    original_clause_text: formData.original_clause_text || null,
+    new_clause_text: formData.new_clause_text || null,
+    requires_resource_liberation: formData.requires_resource_liberation || false,
+    cdp_to_release: formData.cdp_to_release || null,
+    rp_to_release: formData.rp_to_release || null,
+    liberation_amount: formData.liberation_amount ? cleanNumber(formData.liberation_amount) : null,
+    // Campos de cesión:
+    assignment_type: formData.assignment_type || null,
+    assignor_name: formData.assignor_name || null,
+    assignor_id: formData.assignor_id || null,
+    assignee_name: formData.assignee_name || null,
+    assignee_id: formData.assignee_id || null,
+    assignee_id_type: formData.assignee_id_type || null,
+    assignment_date: formData.assignment_date || null,
+    assignment_value: formData.assignment_value ? cleanNumber(formData.assignment_value) : null,
+    assignment_percentage: formData.assignment_percentage ? parseFloat(formData.assignment_percentage) : null,
+    related_derived_project_id: formData.related_derived_project_id || null,
+    assignment_observations: formData.assignment_observations || null,
+  }
+
+  createMutation.mutate(datos)
+}
 
   const getTypeIcon = (type) => {
     switch (type) {
@@ -192,6 +393,16 @@ export default function ModificationsDialog({ project, open, onClose }) {
         return <Badge variant="info">Prórroga</Badge>
       case "BOTH":
         return <Badge variant="warning">Adición y Prórroga</Badge>
+      case "SUSPENSION":
+        return <Badge className="bg-orange-500 text-white">Suspensión</Badge>
+      case "RESTART":
+        return <Badge className="bg-green-500 text-white">Reinicio</Badge>
+      case "LIQUIDATION":
+        return <Badge className="bg-red-500 text-white">Liquidación</Badge>
+      case "MODIFICATION":
+        return <Badge className="bg-purple-500 text-white">Modificación de Cláusulas</Badge>
+      case "ASSIGNMENT":
+        return <Badge className="bg-indigo-500 text-white">Cesión</Badge>
       default:
         return null
     }
@@ -201,7 +412,7 @@ export default function ModificationsDialog({ project, open, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+     <DialogContent className="max-w-[1400px] !fixed !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileEdit className="h-5 w-5" />
@@ -241,161 +452,1014 @@ export default function ModificationsDialog({ project, open, onClose }) {
 
         {/* Formulario */}
         {showForm && (
-          <form onSubmit={handleSubmit} className="space-y-4 border p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Nueva Modificación</h3>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setShowForm(false)
-                  resetForm()
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Fila 1: Tipo y Acto Administrativo */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Tipo de Modificación <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="modification_type"
+                  value={formData.modification_type}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                  required
+                >
+                  <option value="ADDITION">Adición</option>
+                  <option value="EXTENSION">Prórroga</option>
+                  <option value="BOTH">Adición y Prórroga</option>
+                  <option value="SUSPENSION">Suspensión</option>
+                  <option value="RESTART">Reinicio</option>
+                  <option value="LIQUIDATION">Liquidación</option>
+                  <option value="MODIFICATION">Modificación de Cláusulas</option>
+                  <option value="ASSIGNMENT">Cesión</option>
+                </select>
+              </div>
 
-            {/* Tipo de Modificación */}
-            <div>
-              <label className="text-sm font-medium block mb-2">
-                Tipo de Modificación <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                <label className="flex items-center space-x-2 p-3 border rounded cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="modification_type"
-                    value="ADDITION"
-                    checked={formData.modification_type === "ADDITION"}
-                    onChange={handleInputChange}
-                  />
-                  <DollarSign className="h-4 w-4" />
-                  <span>Adición</span>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Acto Administrativo
                 </label>
-                <label className="flex items-center space-x-2 p-3 border rounded cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="modification_type"
-                    value="EXTENSION"
-                    checked={formData.modification_type === "EXTENSION"}
-                    onChange={handleInputChange}
-                  />
-                  <Calendar className="h-4 w-4" />
-                  <span>Prórroga</span>
-                </label>
-                <label className="flex items-center space-x-2 p-3 border rounded cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="modification_type"
-                    value="BOTH"
-                    checked={formData.modification_type === "BOTH"}
-                    onChange={handleInputChange}
-                  />
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Ambas</span>
-                </label>
+                <input
+                  type="text"
+                  name="administrative_act"
+                  value={formData.administrative_act}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                  placeholder="Ej: Resolución 123"
+                />
               </div>
             </div>
 
-            {/* Campos de Adición */}
+            {/* CAMPOS PARA ADICIÓN */}
             {(formData.modification_type === "ADDITION" || formData.modification_type === "BOTH") && (
-              <div className="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
-                <h4 className="font-medium text-green-800 dark:text-green-200">Datos de Adición</h4>
-                <div>
-                  <label className="text-sm font-medium block mb-2">
-                    Valor de Adición (COP) <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    name="addition_value"
-                    value={formatNumber(formData.addition_value)}
-                    onChange={handleNumberInput}
-                    placeholder="150.000.000"
-                    required={formData.modification_type === "ADDITION" || formData.modification_type === "BOTH"}
-                  />
+              <>
+                <div className="border-t pt-6">
+                  <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-green-700">
+                    <DollarSign className="h-5 w-5" />
+                    Información de Adición
+                  </h4>
+                  
+                  {/* Valores: Adición, CDP y RP */}
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor de Adición <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="addition_value"
+                        value={formData.addition_value}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        required
+                      />
+                      <p className="text-xs text-green-600 mt-1 font-medium">
+                        {formData.addition_value && `$ ${formatNumber(formData.addition_value)}`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor CDP <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="cdp_value"
+                        value={formData.cdp_value}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        required
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.cdp_value && `$ ${formatNumber(formData.cdp_value)}`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor RP <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="rp_value"
+                        value={formData.rp_value}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        required
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.rp_value && `$ ${formatNumber(formData.rp_value)}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Números de CDP y RP */}
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Número de CDP <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="cdp"
+                        value={formData.cdp}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Número de CDP"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Número de RP <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="rp"
+                        value={formData.rp}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Número de RP"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Supervisor */}
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
+                    <h5 className="font-medium mb-3 text-gray-700 dark:text-gray-300">Información del Supervisor</h5>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Nombre Completo
+                        </label>
+                        <input
+                          type="text"
+                          name="supervisor_name"
+                          value={formData.supervisor_name}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Nombre del supervisor"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Identificación
+                        </label>
+                        <input
+                          type="text"
+                          name="supervisor_id"
+                          value={formData.supervisor_id}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Número de cédula"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Entidad
+                        </label>
+                        <input
+                          type="text"
+                          name="supervisor_entity_name"
+                          value={formData.supervisor_entity_name}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Entidad del supervisor"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Representante Legal */}
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
+                    <h5 className="font-medium mb-3 text-gray-700 dark:text-gray-300">Representante Legal de la Entidad</h5>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Nombre Completo
+                        </label>
+                        <input
+                          type="text"
+                          name="entity_legal_representative_name"
+                          value={formData.entity_legal_representative_name}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Nombre completo"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Tipo de ID
+                        </label>
+                        <select
+                          name="entity_legal_representative_id_type"
+                          value={formData.entity_legal_representative_id_type}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="CC">Cédula de Ciudadanía</option>
+                          <option value="CE">Cédula de Extranjería</option>
+                          <option value="PA">Pasaporte</option>
+                          <option value="NIT">NIT</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Número de Identificación
+                        </label>
+                        <input
+                          type="text"
+                          name="entity_legal_representative_id"
+                          value={formData.entity_legal_representative_id}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Número"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Póliza y Forma de Pago */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <input
+                          type="checkbox"
+                          name="requires_policy_update"
+                          checked={formData.requires_policy_update}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            requires_policy_update: e.target.checked 
+                          }))}
+                          className="w-4 h-4"
+                        />
+                        <label className="text-sm font-medium">
+                          ¿Requiere actualización de póliza?
+                        </label>
+                      </div>
+                      
+                      {formData.requires_policy_update && (
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Descripción
+                          </label>
+                          <textarea
+                            name="policy_update_description"
+                            value={formData.policy_update_description}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                            rows="2"
+                            placeholder="Describa los cambios en la póliza"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Modificación de Forma de Pago
+                      </label>
+                      <textarea
+                        name="payment_method_modification"
+                        value={formData.payment_method_modification}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        rows="3"
+                        placeholder="Describa cambios en la forma de pago (opcional)"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
-            {/* Campos de Prórroga */}
+            {/* CAMPOS PARA PRÓRROGA */}
             {(formData.modification_type === "EXTENSION" || formData.modification_type === "BOTH") && (
-              <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                <h4 className="font-medium text-blue-800 dark:text-blue-200">Datos de Prórroga</h4>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="border-t pt-6">
+                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-blue-700">
+                  <Calendar className="h-5 w-5" />
+                  Información de Prórroga
+                </h4>
+                
+                <div className="grid grid-cols-3 gap-6">
                   <div>
-                    <label className="text-sm font-medium block mb-2">
+                    <label className="block text-sm font-medium mb-2">
                       Días de Extensión <span className="text-red-500">*</span>
                     </label>
-                    <Input
+                    <input
                       type="number"
                       name="extension_days"
                       value={formData.extension_days}
                       onChange={handleInputChange}
-                      placeholder="90"
-                      min="1"
-                      required={formData.modification_type === "EXTENSION" || formData.modification_type === "BOTH"}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      placeholder="0"
+                      required
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium block mb-2">
-                      Nueva Fecha Fin <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium mb-2">
+                      Nueva Fecha de Finalización <span className="text-red-500">*</span>
                     </label>
-                    <Input
+                    <input
                       type="date"
                       name="new_end_date"
                       value={formData.new_end_date}
                       onChange={handleInputChange}
-                      required={formData.modification_type === "EXTENSION" || formData.modification_type === "BOTH"}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Descripción del Período
+                    </label>
+                    <input
+                      type="text"
+                      name="extension_period_text"
+                      value={formData.extension_period_text}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      placeholder="Ej: CINCO (5) MESES"
                     />
                   </div>
                 </div>
               </div>
             )}
+            {/* CAMPOS PARA SUSPENSIÓN */}
+            {formData.modification_type === "SUSPENSION" && (
+              <div className="border-t pt-6">
+                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-orange-700">
+                  <AlertCircle className="h-5 w-5" />
+                  Información de Suspensión
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Fecha de Inicio de Suspensión <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="suspension_start_date"
+                      value={formData.suspension_start_date}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      required
+                    />
+                  </div>
 
-            {/* Justificación */}
-            <div>
-              <label className="text-sm font-medium block mb-2">
-                Justificación <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="justification"
-                value={formData.justification}
-                onChange={handleInputChange}
-                className="w-full min-h-[100px] px-3 py-2 border rounded-lg"
-                placeholder="Describa la justificación para esta modificación..."
-                required
-              />
-            </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Días de Suspensión Estimados
+                    </label>
+                    <input
+                      type="number"
+                      name="suspension_days"
+                      value={formData.suspension_days}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
 
-            {/* Campos Opcionales */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Acto Administrativo
-                </label>
-                <Input
-                  name="administrative_act"
-                  value={formData.administrative_act}
-                  onChange={handleInputChange}
-                  placeholder="Resolución 123-2024"
-                />
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Motivo de la Suspensión <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="suspension_reason"
+                      value={formData.suspension_reason}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="">Seleccione un motivo</option>
+                      <option value="FUERZA_MAYOR">Fuerza Mayor</option>
+                      <option value="CASO_FORTUITO">Caso Fortuito</option>
+                      <option value="ORDEN_ENTIDAD">Orden de la Entidad</option>
+                      <option value="INCUMPLIMIENTO_ENTIDAD">Incumplimiento de la Entidad</option>
+                      <option value="PROBLEMA_TECNICO">Problema Técnico</option>
+                      <option value="PROBLEMA_PRESUPUESTAL">Problema Presupuestal</option>
+                      <option value="MUTUO_ACUERDO">Mutuo Acuerdo</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Fecha Estimada de Reinicio
+                    </label>
+                    <input
+                      type="date"
+                      name="expected_restart_date"
+                      value={formData.expected_restart_date}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Observaciones de la Suspensión
+                  </label>
+                  <textarea
+                    name="suspension_observations"
+                    value={formData.suspension_observations}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                    rows="3"
+                    placeholder="Describa detalles adicionales sobre la suspensión"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Fecha de Aprobación
-                </label>
-                <Input
-                  type="date"
-                  name="approval_date"
-                  value={formData.approval_date}
-                  onChange={handleInputChange}
-                />
+            )}
+
+            {/* CAMPOS PARA REINICIO */}
+            {formData.modification_type === "RESTART" && (
+              <div className="border-t pt-6">
+                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-green-700">
+                  <Calendar className="h-5 w-5" />
+                  Información de Reinicio
+                </h4>
+                
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    ℹ️ El reinicio se registrará en la suspensión activa más reciente de este proyecto.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Fecha de Reinicio <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="restart_date"
+                      value={formData.restart_date || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Días Reales de Suspensión
+                    </label>
+                    <input
+                      type="number"
+                      name="actual_suspension_days"
+                      value={formData.actual_suspension_days || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Observaciones del Reinicio
+                  </label>
+                  <textarea
+                    name="restart_observations"
+                    value={formData.restart_observations || ""}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                    rows="3"
+                    placeholder="Describa las condiciones del reinicio"
+                  />
+                </div>
+              </div>
+            )}
+            {/* CAMPOS PARA LIQUIDACIÓN */}
+              {formData.modification_type === "LIQUIDATION" && (
+                <div className="border-t pt-6">
+                  <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-red-700">
+                    <FileEdit className="h-5 w-5" />
+                    Información de Liquidación
+                  </h4>
+                  
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Fecha de Liquidación <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="liquidation_date"
+                        value={formData.liquidation_date}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor Final del Contrato <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="final_value"
+                        value={formData.final_value}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        required
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.final_value && `$ ${formatNumber(formData.final_value)}`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Penalidades
+                      </label>
+                      <input
+                        type="text"
+                        name="penalties_amount"
+                        value={formData.penalties_amount}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-red-600 mt-1 font-medium">
+                        {formData.penalties_amount && `$ ${formatNumber(formData.penalties_amount)}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Número del Acta de Liquidación
+                      </label>
+                      <input
+                        type="text"
+                        name="liquidation_act_number"
+                        value={formData.liquidation_act_number}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Ej: ACTA-001-2025"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Fecha del Acta
+                      </label>
+                      <input
+                        type="date"
+                        name="liquidation_act_date"
+                        value={formData.liquidation_act_date}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Saldo Final
+                      </label>
+                      <input
+                        type="text"
+                        name="final_balance"
+                        value={formData.final_balance}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.final_balance && `$ ${formatNumber(formData.final_balance)}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <input
+                        type="checkbox"
+                        name="has_pending_obligations"
+                        checked={formData.has_pending_obligations}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          has_pending_obligations: e.target.checked 
+                        }))}
+                        className="w-4 h-4"
+                      />
+                      <label className="text-sm font-medium">
+                        ¿Existen obligaciones pendientes?
+                      </label>
+                    </div>
+                    
+                    {formData.has_pending_obligations && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Descripción de Obligaciones Pendientes
+                        </label>
+                        <textarea
+                          name="pending_obligations_description"
+                          value={formData.pending_obligations_description}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          rows="2"
+                          placeholder="Describa las obligaciones que quedan pendientes"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Observaciones de la Liquidación
+                    </label>
+                    <textarea
+                      name="liquidation_observations"
+                      value={formData.liquidation_observations}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      rows="3"
+                      placeholder="Observaciones generales sobre la liquidación del contrato"
+                    />
+                  </div>
+                </div>
+              )}
+
+            {/* CAMPOS PARA MODIFICACIÓN DE CLÁUSULAS */}
+                {formData.modification_type === "MODIFICATION" && (
+                  <div className="border-t pt-6">
+                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-purple-700">
+                      <FileEdit className="h-5 w-5" />
+                      Modificación de Cláusulas Contractuales
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Número de Cláusula <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="clause_number"
+                          value={formData.clause_number}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Ej: 3.2"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Nombre de la Cláusula <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="clause_name"
+                          value={formData.clause_name}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Ej: Forma de Pago"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Texto Original de la Cláusula
+                        </label>
+                        <textarea
+                          name="original_clause_text"
+                          value={formData.original_clause_text}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          rows="4"
+                          placeholder="Texto actual de la cláusula (opcional)"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Nuevo Texto de la Cláusula <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          name="new_clause_text"
+                          value={formData.new_clause_text}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          rows="4"
+                          placeholder="Nuevo texto que reemplazará la cláusula"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <input
+                          type="checkbox"
+                          name="requires_resource_liberation"
+                          checked={formData.requires_resource_liberation}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            requires_resource_liberation: e.target.checked 
+                          }))}
+                          className="w-4 h-4"
+                        />
+                        <label className="text-sm font-medium">
+                          ¿Requiere liberación de recursos presupuestales?
+                        </label>
+                      </div>
+                      
+                      {formData.requires_resource_liberation && (
+                        <div className="grid grid-cols-3 gap-4 mt-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              CDP a Liberar
+                            </label>
+                            <input
+                              type="text"
+                              name="cdp_to_release"
+                              value={formData.cdp_to_release}
+                              onChange={handleInputChange}
+                              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                              placeholder="Número de CDP"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              RP a Liberar
+                            </label>
+                            <input
+                              type="text"
+                              name="rp_to_release"
+                              value={formData.rp_to_release}
+                              onChange={handleInputChange}
+                              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                              placeholder="Número de RP"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Monto a Liberar
+                            </label>
+                            <input
+                              type="text"
+                              name="liberation_amount"
+                              value={formData.liberation_amount}
+                              onChange={handleNumberInput}
+                              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                              placeholder="0"
+                            />
+                            <p className="text-xs text-gray-600 mt-1 font-medium">
+                              {formData.liberation_amount && `$ ${formatNumber(formData.liberation_amount)}`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+            {/* CAMPOS PARA CESIÓN */}
+            {formData.modification_type === "ASSIGNMENT" && (
+              <div className="border-t pt-6">
+                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-indigo-700">
+                  <TrendingUp className="h-5 w-5" />
+                  Cesión Contractual
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Tipo de Cesión <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="assignment_type"
+                      value={formData.assignment_type}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="TOTAL">Cesión Total</option>
+                      <option value="PARTIAL">Cesión Parcial</option>
+                      <option value="SUBCONTRACT">Subcontratación</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Fecha de Cesión
+                    </label>
+                    <input
+                      type="date"
+                      name="assignment_date"
+                      value={formData.assignment_date}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Cedente (Assignor) - Actual contratista */}
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
+                  <h5 className="font-medium mb-3 text-gray-700 dark:text-gray-300">
+                    Cedente (Contratista Actual)
+                  </h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Nombre del Cedente
+                      </label>
+                      <input
+                        type="text"
+                        name="assignor_name"
+                        value={formData.assignor_name}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Nombre de quien cede el contrato"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Identificación del Cedente
+                      </label>
+                      <input
+                        type="text"
+                        name="assignor_id"
+                        value={formData.assignor_id}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="CC o NIT"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cesionario (Assignee) - Nuevo contratista */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+                  <h5 className="font-medium mb-3 text-blue-700 dark:text-blue-300">
+                    Cesionario (Nuevo Contratista) <span className="text-red-500">*</span>
+                  </h5>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Nombre del Cesionario <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="assignee_name"
+                        value={formData.assignee_name}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Nombre completo"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Tipo de Identificación
+                      </label>
+                      <select
+                        name="assignee_id_type"
+                        value={formData.assignee_id_type}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="CC">Cédula de Ciudadanía</option>
+                        <option value="CE">Cédula de Extranjería</option>
+                        <option value="NIT">NIT</option>
+                        <option value="PA">Pasaporte</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Número de Identificación <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="assignee_id"
+                        value={formData.assignee_id}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Número"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Valor y Porcentaje de Cesión */}
+                {formData.assignment_type === "PARTIAL" && (
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor de la Cesión
+                      </label>
+                      <input
+                        type="text"
+                        name="assignment_value"
+                        value={formData.assignment_value}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.assignment_value && `$ ${formatNumber(formData.assignment_value)}`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Porcentaje de Cesión
+                      </label>
+                      <input
+                        type="number"
+                        name="assignment_percentage"
+                        value={formData.assignment_percentage}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <p className="text-xs text-gray-600 mt-1">
+                        {formData.assignment_percentage && `${formData.assignment_percentage}%`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Observaciones de la Cesión
+                  </label>
+                  <textarea
+                    name="assignment_observations"
+                    value={formData.assignment_observations}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                    rows="3"
+                    placeholder="Detalles adicionales sobre la cesión contractual"
+                  />
+                </div>
+              </div>
+            )}
+            {/* Justificación y Fecha de Aprobación */}
+            <div className="border-t pt-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Justificación <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="justification"
+                    value={formData.justification}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                    rows="4"
+                    placeholder="Describa la justificación de esta modificación"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Fecha de Aprobación
+                  </label>
+                  <input
+                    type="date"
+                    name="approval_date"
+                    value={formData.approval_date}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Botones */}
-            <div className="flex gap-3 justify-end">
+            <div className="flex justify-end gap-3 pt-6 border-t">
               <Button
                 type="button"
                 variant="outline"
@@ -442,19 +1506,163 @@ export default function ModificationsDialog({ project, open, onClose }) {
                       <TableCell>
                         <div className="space-y-1">
                           {(mod.type === "ADDITION" || mod.type === "BOTH") && (
-                            <div className="flex items-center gap-1 text-green-600">
-                              <DollarSign className="h-3 w-3" />
-                              <span className="text-sm">+{formatCurrency(mod.addition_value)}</span>
-                            </div>
+                            <>
+                              <div className="flex items-center gap-1 text-green-600">
+                                <DollarSign className="h-3 w-3" />
+                                <span className="text-sm font-semibold">+{formatCurrency(mod.addition_value)}</span>
+                              </div>
+                              {mod.cdp && (
+                                <div className="text-xs text-gray-600">
+                                  CDP: {mod.cdp} {mod.cdp_value && `(${formatCurrency(mod.cdp_value)})`}
+                                </div>
+                              )}
+                              {mod.rp && (
+                                <div className="text-xs text-gray-600">
+                                  RP: {mod.rp} {mod.rp_value && `(${formatCurrency(mod.rp_value)})`}
+                                </div>
+                              )}
+                              {mod.supervisor_name && (
+                                <div className="text-xs text-gray-600">
+                                  Supervisor: {mod.supervisor_name}
+                                </div>
+                              )}
+                            </>
                           )}
                           {(mod.type === "EXTENSION" || mod.type === "BOTH") && (
-                            <div className="flex items-center gap-1 text-blue-600">
-                              <Calendar className="h-3 w-3" />
-                              <span className="text-sm">+{mod.extension_days} días → {formatDate(mod.new_end_date)}</span>
-                            </div>
+                            <>
+                              <div className="flex items-center gap-1 text-blue-600">
+                                <Calendar className="h-3 w-3" />
+                                <span className="text-sm">+{mod.extension_days} días → {formatDate(mod.new_end_date)}</span>
+                              </div>
+                              {mod.extension_period_text && (
+                                <div className="text-xs text-gray-600">
+                                  {mod.extension_period_text}
+                                </div>
+                              )}
+                            </>
                           )}
                           {mod.administrative_act && (
-                            <div className="text-xs text-gray-500">{mod.administrative_act}</div>
+                            <div className="text-xs text-gray-500 mt-1">{mod.administrative_act}</div>
+                          )}
+                          {mod.requires_policy_update && (
+                            <div className="text-xs text-orange-600 mt-1">
+                              ⚠️ Requiere actualización de póliza
+                            </div>
+                          )}
+                          {mod.type === "SUSPENSION" && (
+                            <>
+                              <div className="flex items-center gap-1 text-orange-600">
+                                <AlertCircle className="h-3 w-3" />
+                                <span className="text-sm font-semibold">Suspendido desde {formatDate(mod.suspension_start_date)}</span>
+                              </div>
+                              {mod.suspension_reason && (
+                                <div className="text-xs text-gray-600">
+                                  Motivo: {mod.suspension_reason.replace(/_/g, ' ')}
+                                </div>
+                              )}
+                              {mod.suspension_days && (
+                                <div className="text-xs text-gray-600">
+                                  Días estimados: {mod.suspension_days}
+                                </div>
+                              )}
+                              {mod.expected_restart_date && (
+                                <div className="text-xs text-gray-600">
+                                  Reinicio estimado: {formatDate(mod.expected_restart_date)}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {mod.type === "RESTART" && (
+                            <>
+                              <div className="flex items-center gap-1 text-green-600">
+                                <Calendar className="h-3 w-3" />
+                                <span className="text-sm font-semibold">Reiniciado el {formatDate(mod.restart_date)}</span>
+                              </div>
+                              {mod.actual_suspension_days && (
+                                <div className="text-xs text-gray-600">
+                                  Días reales de suspensión: {mod.actual_suspension_days}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {mod.type === "LIQUIDATION" && (
+                            <>
+                              <div className="flex items-center gap-1 text-red-600">
+                                <FileEdit className="h-3 w-3" />
+                                <span className="text-sm font-semibold">Liquidado el {formatDate(mod.liquidation_date)}</span>
+                              </div>
+                              {mod.final_value && (
+                                <div className="text-xs text-gray-600">
+                                  Valor final: {formatCurrency(mod.final_value)}
+                                </div>
+                              )}
+                              {mod.penalties_amount && parseFloat(mod.penalties_amount) > 0 && (
+                                <div className="text-xs text-red-600">
+                                  Penalidades: {formatCurrency(mod.penalties_amount)}
+                                </div>
+                              )}
+                              {mod.liquidation_act_number && (
+                                <div className="text-xs text-gray-600">
+                                  Acta: {mod.liquidation_act_number}
+                                </div>
+                              )}
+                              {mod.has_pending_obligations && (
+                                <div className="text-xs text-orange-600">
+                                  ⚠️ Tiene obligaciones pendientes
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {mod.type === "MODIFICATION" && (
+                            <>
+                              <div className="flex items-center gap-1 text-purple-600">
+                                <FileEdit className="h-3 w-3" />
+                                <span className="text-sm font-semibold">Cláusula {mod.clause_number}: {mod.clause_name}</span>
+                              </div>
+                              {mod.new_clause_text && (
+                                <div className="text-xs text-gray-600 line-clamp-2">
+                                  Nuevo texto: {mod.new_clause_text}
+                                </div>
+                              )}
+                              {mod.requires_resource_liberation && (
+                                <div className="text-xs text-orange-600">
+                                  ⚠️ Requiere liberación de recursos
+                                  {mod.liberation_amount && ` (${formatCurrency(mod.liberation_amount)})`}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {mod.type === "ASSIGNMENT" && (
+                            <>
+                              <div className="flex items-center gap-1 text-indigo-600">
+                                <TrendingUp className="h-3 w-3" />
+                                <span className="text-sm font-semibold">
+                                  {mod.assignment_type === 'TOTAL' ? 'Cesión Total' : 
+                                  mod.assignment_type === 'PARTIAL' ? 'Cesión Parcial' : 
+                                  'Subcontratación'}
+                                </span>
+                              </div>
+                              {mod.assignee_name && (
+                                <div className="text-xs text-gray-600">
+                                  Cesionario: {mod.assignee_name} ({mod.assignee_id})
+                                </div>
+                              )}
+                              {mod.assignor_name && (
+                                <div className="text-xs text-gray-600">
+                                  Cedente: {mod.assignor_name}
+                                </div>
+                              )}
+                              {mod.assignment_percentage && (
+                                <div className="text-xs text-blue-600">
+                                  {mod.assignment_percentage}% del contrato
+                                </div>
+                              )}
+                              {mod.assignment_value && (
+                                <div className="text-xs text-green-600">
+                                  Valor: {formatCurrency(mod.assignment_value)}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </TableCell>

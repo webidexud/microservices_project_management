@@ -2371,22 +2371,81 @@ app.get('/api/projects/:projectId/modifications', async (req, res) => {
     
     const result = await client.query(
       `SELECT 
-        modification_id as id,
-        project_id,
-        modification_number as number,
-        modification_type as type,
-        addition_value,
-        extension_days,
-        new_end_date,
-        new_total_value,
-        justification,
-        administrative_act,
-        approval_date,
-        created_at,
-        is_active as active
-      FROM project_modifications
-      WHERE project_id = $1 AND is_active = true
-      ORDER BY modification_number DESC`,
+        pm.modification_id as id,
+        pm.project_id,
+        pm.modification_number as number,
+        pm.modification_type as type,
+        pm.addition_value,
+        pm.extension_days,
+        pm.new_end_date,
+        pm.new_total_value,
+        pm.justification,
+        pm.administrative_act,
+        pm.approval_date,
+        pm.extension_period_text,
+        pm.cdp,
+        pm.cdp_value,
+        pm.rp,
+        pm.rp_value,
+        pm.supervisor_name,
+        pm.supervisor_id,
+        pm.supervisor_entity_name,
+        pm.entity_legal_representative_name,
+        pm.entity_legal_representative_id,
+        pm.entity_legal_representative_id_type,
+        pm.ordering_official_id,
+        pm.requires_policy_update,
+        pm.policy_update_description,
+        pm.payment_method_modification,
+        pm.created_at,
+        pm.updated_at,
+        pm.is_active as active,
+        ms.suspension_id,
+        ms.suspension_start_date,
+        ms.suspension_reason,
+        ms.suspension_days,
+        ms.expected_restart_date,
+        ms.restart_date,
+        ms.actual_suspension_days,
+        ms.restart_observations,
+        ms.suspension_observations,
+        ml.liquidation_id,
+        ml.liquidation_date,
+        ml.final_value,
+        ml.liquidation_act_number,
+        ml.liquidation_act_date,
+        ml.penalties_amount,
+        ml.final_balance,
+        ml.has_pending_obligations,
+        ml.pending_obligations_description,
+        ml.liquidation_observations,
+        mcc.clause_change_id,
+        mcc.clause_number,
+        mcc.clause_name,
+        mcc.original_clause_text,
+        mcc.new_clause_text,
+        mcc.requires_resource_liberation,
+        mcc.cdp_to_release,
+        mcc.rp_to_release,
+        mcc.liberation_amount,
+        ma.assignment_id,
+        ma.assignment_type,
+        ma.assignor_name,
+        ma.assignor_id,
+        ma.assignee_name,
+        ma.assignee_id,
+        ma.assignee_id_type,
+        ma.assignment_date,
+        ma.assignment_value,
+        ma.assignment_percentage,
+        ma.assignment_observations
+      FROM project_modifications pm
+      LEFT JOIN modification_suspensions ms ON pm.modification_id = ms.modification_id AND ms.is_active = true
+      LEFT JOIN modification_liquidations ml ON pm.modification_id = ml.modification_id AND ml.is_active = true
+      LEFT JOIN modification_clause_changes mcc ON pm.modification_id = mcc.modification_id AND mcc.is_active = true
+      LEFT JOIN modification_assignments ma ON pm.modification_id = ma.modification_id AND ma.is_active = true
+      WHERE pm.project_id = $1 AND pm.is_active = true
+      ORDER BY pm.modification_number DESC`,
       [projectId]
     );
     
@@ -2398,7 +2457,8 @@ app.get('/api/projects/:projectId/modifications', async (req, res) => {
   }
 });
 
-// POST - Crear nueva modificación
+
+// POST - Crear nueva modificación (VERSIÓN COMPLETA)
 app.post('/api/projects/:projectId/modifications', async (req, res) => {
   const client = await pool.connect();
   
@@ -2411,17 +2471,33 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
       new_end_date,
       justification,
       administrative_act,
-      approval_date
+      approval_date,
+      // Campos nuevos:
+      extension_period_text,
+      cdp,
+      cdp_value,
+      rp,
+      rp_value,
+      supervisor_name,
+      supervisor_id,
+      supervisor_entity_name,
+      entity_legal_representative_name,
+      entity_legal_representative_id,
+      entity_legal_representative_id_type,
+      ordering_official_id,
+      requires_policy_update,
+      policy_update_description,
+      payment_method_modification
     } = req.body;
     
-    // 1. Validar campos requeridos
+    // 1. Validar campos requeridos básicos
     if (!modification_type || !justification) {
       return res.status(400).json({ 
         error: 'El tipo de modificación y la justificación son obligatorios' 
       });
     }
     
-    // 2. Validar según tipo
+    // 2. Validar según tipo de modificación
     if (modification_type === 'ADDITION' && !addition_value) {
       return res.status(400).json({ 
         error: 'El valor de adición es obligatorio para modificaciones tipo ADICIÓN' 
@@ -2440,9 +2516,36 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
       });
     }
     
+    // 3. Validar CDP y RP para adiciones
+    if ((modification_type === 'ADDITION' || modification_type === 'BOTH')) {
+      if (!cdp || !rp) {
+        return res.status(400).json({
+          error: 'CDP y RP son obligatorios para adiciones presupuestales'
+        });
+      }
+      
+      if (cdp_value && rp_value && addition_value) {
+        const addValue = parseFloat(addition_value);
+        const cdpVal = parseFloat(cdp_value);
+        const rpVal = parseFloat(rp_value);
+        
+        if (cdpVal < addValue) {
+          return res.status(400).json({
+            error: 'El valor del CDP debe ser mayor o igual al valor de la adición'
+          });
+        }
+        
+        if (rpVal < addValue) {
+          return res.status(400).json({
+            error: 'El valor del RP debe ser mayor o igual al valor de la adición'
+          });
+        }
+      }
+    }
+    
     await client.query('BEGIN');
     
-    // 3. Obtener datos actuales del proyecto
+    // 4. Obtener datos actuales del proyecto
     const projectResult = await client.query(
       'SELECT project_value, end_date FROM projects WHERE project_id = $1',
       [projectId]
@@ -2454,8 +2557,9 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
     }
     
     const currentProject = projectResult.rows[0];
+    const initialValue = parseFloat(currentProject.project_value);
     
-    // 4. Obtener suma de adiciones anteriores
+    // 5. Obtener suma de adiciones anteriores
     const additionsResult = await client.query(
       `SELECT COALESCE(SUM(addition_value), 0) as total_additions
        FROM project_modifications
@@ -2464,14 +2568,35 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
       [projectId]
     );
     
-    const totalAdditions = parseFloat(additionsResult.rows[0].total_additions);
-    
-    // 5. Calcular nuevo valor total
-    const currentValue = parseFloat(currentProject.project_value);
+    const previousAdditions = parseFloat(additionsResult.rows[0].total_additions);
     const additionAmount = addition_value ? parseFloat(addition_value) : 0;
-    const newTotalValue = currentValue + totalAdditions + additionAmount;
+    const totalAdditions = previousAdditions + additionAmount;
     
-    // 6. Obtener siguiente número de modificación
+    // 6. VALIDAR LÍMITE DEL 50% (solo para adiciones)
+    if (additionAmount > 0) {
+      const percentageIncrease = (totalAdditions / initialValue) * 100;
+      
+      if (percentageIncrease > 50) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'La adición supera el límite legal del 50% del valor inicial del contrato',
+          details: {
+            valorInicial: initialValue,
+            adicionesAnteriores: previousAdditions,
+            adicionActual: additionAmount,
+            adicionesAcumuladas: totalAdditions,
+            porcentaje: percentageIncrease.toFixed(2) + '%',
+            limitePermitido: '50%'
+          }
+        });
+      }
+    }
+    
+    // 7. Calcular nuevo valor total
+    const currentValue = parseFloat(currentProject.project_value);
+    const newTotalValue = currentValue + totalAdditions;
+    
+    // 8. Obtener siguiente número de modificación
     const numberResult = await client.query(
       `SELECT COALESCE(MAX(modification_number), 0) + 1 as next_number
        FROM project_modifications
@@ -2483,7 +2608,7 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
     
     console.log(`📝 Creando modificación #${modificationNumber} para proyecto ${projectId}`);
     
-    // 7. Insertar modificación
+    // 9. Insertar modificación con TODOS los campos
     const insertResult = await client.query(
       `INSERT INTO project_modifications (
         project_id,
@@ -2496,9 +2621,24 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
         justification,
         administrative_act,
         approval_date,
+        extension_period_text,
+        cdp,
+        cdp_value,
+        rp,
+        rp_value,
+        supervisor_name,
+        supervisor_id,
+        supervisor_entity_name,
+        entity_legal_representative_name,
+        entity_legal_representative_id,
+        entity_legal_representative_id_type,
+        ordering_official_id,
+        requires_policy_update,
+        policy_update_description,
+        payment_method_modification,
         created_by_user_id,
         is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, true)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NULL, true)
       RETURNING 
         modification_id as id,
         modification_number as number,
@@ -2510,6 +2650,11 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
         justification,
         administrative_act,
         approval_date,
+        cdp,
+        cdp_value,
+        rp,
+        rp_value,
+        supervisor_name,
         created_at`,
       [
         projectId,
@@ -2521,18 +2666,272 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
         newTotalValue,
         justification,
         administrative_act || null,
-        approval_date || null
+        approval_date || null,
+        extension_period_text || null,
+        cdp || null,
+        cdp_value ? parseFloat(cdp_value) : null,
+        rp || null,
+        rp_value ? parseFloat(rp_value) : null,
+        supervisor_name || null,
+        supervisor_id || null,
+        supervisor_entity_name || null,
+        entity_legal_representative_name || null,
+        entity_legal_representative_id || null,
+        entity_legal_representative_id_type || null,
+        ordering_official_id || null,
+        requires_policy_update || false,
+        policy_update_description || null,
+        payment_method_modification || null
       ]
     );
     
+    // 10. ACTUALIZAR valor del proyecto si hay adición
+    if (additionAmount > 0) {
+      await client.query(
+        `UPDATE projects 
+         SET project_value = $1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE project_id = $2`,
+        [newTotalValue, projectId]
+      );
+      
+      console.log(`💰 Valor del proyecto actualizado: ${newTotalValue}`);
+    }
+    
+    // 11. Si es SUSPENSION, crear registro en modification_suspensions
+if (modification_type === 'SUSPENSION') {
+  const {
+    suspension_start_date,
+    suspension_reason,
+    suspension_days,
+    expected_restart_date,
+    suspension_observations
+  } = req.body;
+  
+  if (suspension_start_date && suspension_reason) {
+    await client.query(
+      `INSERT INTO modification_suspensions (
+        modification_id,
+        suspension_start_date,
+        suspension_reason,
+        suspension_days,
+        expected_restart_date,
+        suspension_observations,
+        is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, true)`,
+      [
+        insertResult.rows[0].id,
+        suspension_start_date,
+        suspension_reason,
+        suspension_days || null,
+        expected_restart_date || null,
+        suspension_observations || null
+      ]
+    );
+    
+    console.log(`⏸️ Suspensión creada para modificación #${modificationNumber}`);
+  }
+}
+
+    // 12. Si es RESTART, actualizar la suspensión activa más reciente
+    if (modification_type === 'RESTART') {
+      const {
+        restart_date,
+        actual_suspension_days,
+        restart_observations
+      } = req.body;
+      
+      if (restart_date) {
+        // Buscar la suspensión activa más reciente sin reinicio
+        const activeSuspensionResult = await client.query(
+          `SELECT ms.suspension_id
+          FROM modification_suspensions ms
+          INNER JOIN project_modifications pm ON ms.modification_id = pm.modification_id
+          WHERE pm.project_id = $1 
+            AND ms.is_active = true 
+            AND ms.restart_date IS NULL
+          ORDER BY ms.suspension_start_date DESC
+          LIMIT 1`,
+          [projectId]
+        );
+        
+        if (activeSuspensionResult.rows.length > 0) {
+          const suspensionId = activeSuspensionResult.rows[0].suspension_id;
+          
+          await client.query(
+            `UPDATE modification_suspensions 
+            SET restart_date = $1,
+                actual_suspension_days = $2,
+                restart_observations = $3,
+                restart_modification_id = $4
+            WHERE suspension_id = $5`,
+            [
+              restart_date,
+              actual_suspension_days || null,
+              restart_observations || null,
+              insertResult.rows[0].id,
+              suspensionId
+            ]
+          );
+          
+          console.log(`▶️ Reinicio registrado para suspensión #${suspensionId}`);
+        } else {
+          console.warn('⚠️ No se encontró suspensión activa para registrar reinicio');
+        }
+      }
+    }
+
+    // 13. Si es LIQUIDATION, crear registro en modification_liquidations
+    if (modification_type === 'LIQUIDATION') {
+      const {
+        liquidation_date,
+        final_value,
+        liquidation_act_number,
+        liquidation_act_date,
+        penalties_amount,
+        final_balance,
+        has_pending_obligations,
+        pending_obligations_description,
+        liquidation_observations
+      } = req.body;
+      
+      if (liquidation_date && final_value) {
+        await client.query(
+          `INSERT INTO modification_liquidations (
+            modification_id,
+            liquidation_date,
+            final_value,
+            liquidation_act_number,
+            liquidation_act_date,
+            penalties_amount,
+            final_balance,
+            has_pending_obligations,
+            pending_obligations_description,
+            liquidation_observations,
+            is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)`,
+          [
+            insertResult.rows[0].id,
+            liquidation_date,
+            parseFloat(final_value),
+            liquidation_act_number || null,
+            liquidation_act_date || null,
+            penalties_amount ? parseFloat(penalties_amount) : null,
+            final_balance ? parseFloat(final_balance) : null,
+            has_pending_obligations || false,
+            pending_obligations_description || null,
+            liquidation_observations || null
+          ]
+        );
+        
+        console.log(`📋 Liquidación creada para modificación #${modificationNumber}`);
+      }
+    }
+    // 14. Si es MODIFICATION (cambio de cláusulas), crear registro en modification_clause_changes
+    if (modification_type === 'MODIFICATION') {
+      const {
+        clause_number,
+        clause_name,
+        original_clause_text,
+        new_clause_text,
+        requires_resource_liberation,
+        cdp_to_release,
+        rp_to_release,
+        liberation_amount
+      } = req.body;
+      
+      if (clause_number && clause_name && new_clause_text) {
+        await client.query(
+          `INSERT INTO modification_clause_changes (
+            modification_id,
+            clause_number,
+            clause_name,
+            original_clause_text,
+            new_clause_text,
+            requires_resource_liberation,
+            cdp_to_release,
+            rp_to_release,
+            liberation_amount,
+            is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)`,
+          [
+            insertResult.rows[0].id,
+            clause_number,
+            clause_name,
+            original_clause_text || null,
+            new_clause_text,
+            requires_resource_liberation || false,
+            cdp_to_release || null,
+            rp_to_release || null,
+            liberation_amount ? parseFloat(liberation_amount) : null
+          ]
+        );
+        
+        console.log(`📝 Cambio de cláusula creado para modificación #${modificationNumber}`);
+      }
+    }
+    // 15. Si es ASSIGNMENT (cesión), crear registro en modification_assignments
+    if (modification_type === 'ASSIGNMENT') {
+      const {
+        assignment_type,
+        assignor_name,
+        assignor_id,
+        assignee_name,
+        assignee_id,
+        assignee_id_type,
+        assignment_date,
+        assignment_value,
+        assignment_percentage,
+        related_derived_project_id,
+        assignment_observations
+      } = req.body;
+      
+      if (assignee_name && assignee_id) {
+        await client.query(
+          `INSERT INTO modification_assignments (
+            modification_id,
+            assignment_type,
+            assignor_name,
+            assignor_id,
+            assignee_name,
+            assignee_id,
+            assignee_id_type,
+            assignment_date,
+            assignment_value,
+            assignment_percentage,
+            related_derived_project_id,
+            assignment_observations,
+            is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)`,
+          [
+            insertResult.rows[0].id,
+            assignment_type || 'TOTAL',
+            assignor_name || null,
+            assignor_id || null,
+            assignee_name,
+            assignee_id,
+            assignee_id_type || 'CC',
+            assignment_date || null,
+            assignment_value ? parseFloat(assignment_value) : null,
+            assignment_percentage ? parseFloat(assignment_percentage) : null,
+            related_derived_project_id || null,
+            assignment_observations || null
+          ]
+        );
+        
+        console.log(`🔄 Cesión creada para modificación #${modificationNumber}`);
+      }
+    }
+
     await client.query('COMMIT');
-    
+
     console.log(`✅ Modificación #${modificationNumber} creada exitosamente`);
-    
+
     res.status(201).json({
       success: true,
       message: 'Modificación creada exitosamente',
-      modification: insertResult.rows[0]
+      modification: insertResult.rows[0],
+      projectUpdated: additionAmount > 0
     });
     
   } catch (error) {
@@ -2544,6 +2943,808 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
     });
   } finally {
     client.release();
+  }
+});
+
+// ============================================
+// SUSPENSIONES DE PROYECTOS
+// ============================================
+
+// POST - Crear suspensión
+app.post('/api/projects/:projectId/modifications/:modificationId/suspension', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { projectId, modificationId } = req.params;
+    const {
+      suspension_start_date,
+      suspension_reason,
+      suspension_days,
+      expected_restart_date,
+      suspension_observations
+    } = req.body;
+    
+    // Validar campos requeridos
+    if (!suspension_start_date || !suspension_reason) {
+      return res.status(400).json({ 
+        error: 'La fecha de inicio y el motivo de suspensión son obligatorios' 
+      });
+    }
+    
+    await client.query('BEGIN');
+    
+    // Verificar que la modificación existe y es de tipo SUSPENSION
+    const modResult = await client.query(
+      `SELECT modification_type FROM project_modifications 
+       WHERE modification_id = $1 AND project_id = $2 AND is_active = true`,
+      [modificationId, projectId]
+    );
+    
+    if (modResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Modificación no encontrada' });
+    }
+    
+    if (modResult.rows[0].modification_type !== 'SUSPENSION') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Esta modificación no es de tipo SUSPENSION' 
+      });
+    }
+    
+    // Insertar suspensión
+    const insertResult = await client.query(
+      `INSERT INTO modification_suspensions (
+        modification_id,
+        suspension_start_date,
+        suspension_reason,
+        suspension_days,
+        expected_restart_date,
+        suspension_observations,
+        is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, true)
+      RETURNING 
+        suspension_id,
+        modification_id,
+        suspension_start_date,
+        suspension_reason,
+        suspension_days,
+        expected_restart_date,
+        restart_date,
+        suspension_observations,
+        created_at`,
+      [
+        modificationId,
+        suspension_start_date,
+        suspension_reason,
+        suspension_days || null,
+        expected_restart_date || null,
+        suspension_observations || null
+      ]
+    );
+    
+    await client.query('COMMIT');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Suspensión creada exitosamente',
+      suspension: insertResult.rows[0]
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al crear suspensión:', error);
+    res.status(500).json({ 
+      error: 'Error al crear la suspensión',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT - Registrar reinicio de suspensión
+app.put('/api/suspensions/:suspensionId/restart', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { suspensionId } = req.params;
+    const {
+      restart_date,
+      actual_suspension_days,
+      restart_observations,
+      restart_modification_id
+    } = req.body;
+    
+    // Validar campo requerido
+    if (!restart_date) {
+      return res.status(400).json({ 
+        error: 'La fecha de reinicio es obligatoria' 
+      });
+    }
+    
+    await client.query('BEGIN');
+    
+    // Verificar que la suspensión existe y no tiene reinicio
+    const suspResult = await client.query(
+      `SELECT suspension_id, restart_date 
+       FROM modification_suspensions 
+       WHERE suspension_id = $1 AND is_active = true`,
+      [suspensionId]
+    );
+    
+    if (suspResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Suspensión no encontrada' });
+    }
+    
+    if (suspResult.rows[0].restart_date) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Esta suspensión ya tiene un reinicio registrado' 
+      });
+    }
+    
+    // Actualizar suspensión con datos de reinicio
+    const updateResult = await client.query(
+      `UPDATE modification_suspensions 
+       SET restart_date = $1,
+           actual_suspension_days = $2,
+           restart_observations = $3,
+           restart_modification_id = $4
+       WHERE suspension_id = $5
+       RETURNING 
+         suspension_id,
+         modification_id,
+         suspension_start_date,
+         suspension_reason,
+         suspension_days,
+         expected_restart_date,
+         restart_date,
+         actual_suspension_days,
+         restart_observations,
+         created_at`,
+      [
+        restart_date,
+        actual_suspension_days || null,
+        restart_observations || null,
+        restart_modification_id || null,
+        suspensionId
+      ]
+    );
+    
+    await client.query('COMMIT');
+    
+    res.json({
+      success: true,
+      message: 'Reinicio registrado exitosamente',
+      suspension: updateResult.rows[0]
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al registrar reinicio:', error);
+    res.status(500).json({ 
+      error: 'Error al registrar el reinicio',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// GET - Obtener suspensiones de una modificación
+app.get('/api/modifications/:modificationId/suspensions', async (req, res) => {
+  try {
+    const { modificationId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        suspension_id,
+        modification_id,
+        suspension_start_date,
+        suspension_reason,
+        suspension_days,
+        expected_restart_date,
+        restart_date,
+        actual_suspension_days,
+        restart_observations,
+        restart_modification_id,
+        suspension_observations,
+        created_at,
+        is_active
+      FROM modification_suspensions
+      WHERE modification_id = $1 AND is_active = true
+      ORDER BY suspension_start_date DESC`,
+      [modificationId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener suspensiones:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Obtener todas las suspensiones de un proyecto
+app.get('/api/projects/:projectId/suspensions', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        ms.suspension_id,
+        ms.modification_id,
+        pm.modification_number,
+        ms.suspension_start_date,
+        ms.suspension_reason,
+        ms.suspension_days,
+        ms.expected_restart_date,
+        ms.restart_date,
+        ms.actual_suspension_days,
+        ms.restart_observations,
+        ms.suspension_observations,
+        ms.created_at,
+        CASE 
+          WHEN ms.restart_date IS NULL THEN 'ACTIVA'
+          ELSE 'REINICIADA'
+        END as status
+      FROM modification_suspensions ms
+      INNER JOIN project_modifications pm ON ms.modification_id = pm.modification_id
+      WHERE pm.project_id = $1 AND ms.is_active = true
+      ORDER BY ms.suspension_start_date DESC`,
+      [projectId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener suspensiones del proyecto:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// LIQUIDACIONES DE PROYECTOS
+// ============================================
+
+// POST - Crear liquidación
+app.post('/api/projects/:projectId/modifications/:modificationId/liquidation', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { projectId, modificationId } = req.params;
+    const {
+      liquidation_date,
+      final_value,
+      liquidation_act_number,
+      liquidation_act_date,
+      penalties_amount,
+      final_balance,
+      has_pending_obligations,
+      pending_obligations_description,
+      liquidation_observations
+    } = req.body;
+    
+    // Validar campos requeridos
+    if (!liquidation_date || !final_value) {
+      return res.status(400).json({ 
+        error: 'La fecha de liquidación y el valor final son obligatorios' 
+      });
+    }
+    
+    await client.query('BEGIN');
+    
+    // Verificar que la modificación existe y es de tipo LIQUIDATION
+    const modResult = await client.query(
+      `SELECT modification_type FROM project_modifications 
+       WHERE modification_id = $1 AND project_id = $2 AND is_active = true`,
+      [modificationId, projectId]
+    );
+    
+    if (modResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Modificación no encontrada' });
+    }
+    
+    if (modResult.rows[0].modification_type !== 'LIQUIDATION') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Esta modificación no es de tipo LIQUIDATION' 
+      });
+    }
+    
+    // Insertar liquidación
+    const insertResult = await client.query(
+      `INSERT INTO modification_liquidations (
+        modification_id,
+        liquidation_date,
+        final_value,
+        liquidation_act_number,
+        liquidation_act_date,
+        penalties_amount,
+        final_balance,
+        has_pending_obligations,
+        pending_obligations_description,
+        liquidation_observations,
+        is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+      RETURNING 
+        liquidation_id,
+        modification_id,
+        liquidation_date,
+        final_value,
+        liquidation_act_number,
+        liquidation_act_date,
+        penalties_amount,
+        final_balance,
+        has_pending_obligations,
+        pending_obligations_description,
+        liquidation_observations,
+        created_at`,
+      [
+        modificationId,
+        liquidation_date,
+        parseFloat(final_value),
+        liquidation_act_number || null,
+        liquidation_act_date || null,
+        penalties_amount ? parseFloat(penalties_amount) : null,
+        final_balance ? parseFloat(final_balance) : null,
+        has_pending_obligations || false,
+        pending_obligations_description || null,
+        liquidation_observations || null
+      ]
+    );
+    
+    await client.query('COMMIT');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Liquidación creada exitosamente',
+      liquidation: insertResult.rows[0]
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al crear liquidación:', error);
+    res.status(500).json({ 
+      error: 'Error al crear la liquidación',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// GET - Obtener liquidaciones de una modificación
+app.get('/api/modifications/:modificationId/liquidations', async (req, res) => {
+  try {
+    const { modificationId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        liquidation_id,
+        modification_id,
+        liquidation_date,
+        final_value,
+        liquidation_act_number,
+        liquidation_act_date,
+        penalties_amount,
+        final_balance,
+        has_pending_obligations,
+        pending_obligations_description,
+        liquidation_observations,
+        created_at,
+        is_active
+      FROM modification_liquidations
+      WHERE modification_id = $1 AND is_active = true
+      ORDER BY liquidation_date DESC`,
+      [modificationId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener liquidaciones:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Obtener todas las liquidaciones de un proyecto
+app.get('/api/projects/:projectId/liquidations', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        ml.liquidation_id,
+        ml.modification_id,
+        pm.modification_number,
+        ml.liquidation_date,
+        ml.final_value,
+        ml.liquidation_act_number,
+        ml.liquidation_act_date,
+        ml.penalties_amount,
+        ml.final_balance,
+        ml.has_pending_obligations,
+        ml.pending_obligations_description,
+        ml.liquidation_observations,
+        ml.created_at
+      FROM modification_liquidations ml
+      INNER JOIN project_modifications pm ON ml.modification_id = pm.modification_id
+      WHERE pm.project_id = $1 AND ml.is_active = true
+      ORDER BY ml.liquidation_date DESC`,
+      [projectId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener liquidaciones del proyecto:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// CAMBIOS DE CLÁUSULAS
+// ============================================
+
+// POST - Crear cambio de cláusula
+app.post('/api/projects/:projectId/modifications/:modificationId/clause-change', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { projectId, modificationId } = req.params;
+    const {
+      clause_number,
+      clause_name,
+      original_clause_text,
+      new_clause_text,
+      requires_resource_liberation,
+      cdp_to_release,
+      rp_to_release,
+      liberation_amount
+    } = req.body;
+    
+    // Validar campos requeridos
+    if (!clause_number || !clause_name || !new_clause_text) {
+      return res.status(400).json({ 
+        error: 'El número de cláusula, nombre y nuevo texto son obligatorios' 
+      });
+    }
+    
+    await client.query('BEGIN');
+    
+    // Verificar que la modificación existe
+    const modResult = await client.query(
+      `SELECT modification_type FROM project_modifications 
+       WHERE modification_id = $1 AND project_id = $2 AND is_active = true`,
+      [modificationId, projectId]
+    );
+    
+    if (modResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Modificación no encontrada' });
+    }
+    
+    // Insertar cambio de cláusula
+    const insertResult = await client.query(
+      `INSERT INTO modification_clause_changes (
+        modification_id,
+        clause_number,
+        clause_name,
+        original_clause_text,
+        new_clause_text,
+        requires_resource_liberation,
+        cdp_to_release,
+        rp_to_release,
+        liberation_amount,
+        is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+      RETURNING 
+        clause_change_id,
+        modification_id,
+        clause_number,
+        clause_name,
+        original_clause_text,
+        new_clause_text,
+        requires_resource_liberation,
+        cdp_to_release,
+        rp_to_release,
+        liberation_amount,
+        created_at`,
+      [
+        modificationId,
+        clause_number,
+        clause_name,
+        original_clause_text || null,
+        new_clause_text,
+        requires_resource_liberation || false,
+        cdp_to_release || null,
+        rp_to_release || null,
+        liberation_amount ? parseFloat(liberation_amount) : null
+      ]
+    );
+    
+    await client.query('COMMIT');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Cambio de cláusula creado exitosamente',
+      clauseChange: insertResult.rows[0]
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al crear cambio de cláusula:', error);
+    res.status(500).json({ 
+      error: 'Error al crear el cambio de cláusula',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// GET - Obtener cambios de cláusulas de una modificación
+app.get('/api/modifications/:modificationId/clause-changes', async (req, res) => {
+  try {
+    const { modificationId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        clause_change_id,
+        modification_id,
+        clause_number,
+        clause_name,
+        original_clause_text,
+        new_clause_text,
+        requires_resource_liberation,
+        cdp_to_release,
+        rp_to_release,
+        liberation_amount,
+        created_at,
+        is_active
+      FROM modification_clause_changes
+      WHERE modification_id = $1 AND is_active = true
+      ORDER BY clause_number`,
+      [modificationId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener cambios de cláusulas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Obtener todos los cambios de cláusulas de un proyecto
+app.get('/api/projects/:projectId/clause-changes', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        cc.clause_change_id,
+        cc.modification_id,
+        pm.modification_number,
+        cc.clause_number,
+        cc.clause_name,
+        cc.original_clause_text,
+        cc.new_clause_text,
+        cc.requires_resource_liberation,
+        cc.cdp_to_release,
+        cc.rp_to_release,
+        cc.liberation_amount,
+        cc.created_at
+      FROM modification_clause_changes cc
+      INNER JOIN project_modifications pm ON cc.modification_id = pm.modification_id
+      WHERE pm.project_id = $1 AND cc.is_active = true
+      ORDER BY pm.modification_number, cc.clause_number`,
+      [projectId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener cambios de cláusulas del proyecto:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// CESIONES CONTRACTUALES
+// ============================================
+
+// POST - Crear cesión
+app.post('/api/projects/:projectId/modifications/:modificationId/assignment', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { projectId, modificationId } = req.params;
+    const {
+      assignment_type,
+      assignor_name,
+      assignor_id,
+      assignee_name,
+      assignee_id,
+      assignee_id_type,
+      assignment_date,
+      assignment_value,
+      assignment_percentage,
+      related_derived_project_id,
+      assignment_observations
+    } = req.body;
+    
+    // Validar campos requeridos
+    if (!assignment_type || !assignee_name || !assignee_id) {
+      return res.status(400).json({ 
+        error: 'El tipo de cesión, nombre y cédula del cesionario son obligatorios' 
+      });
+    }
+    
+    await client.query('BEGIN');
+    
+    // Verificar que la modificación existe
+    const modResult = await client.query(
+      `SELECT modification_type FROM project_modifications 
+       WHERE modification_id = $1 AND project_id = $2 AND is_active = true`,
+      [modificationId, projectId]
+    );
+    
+    if (modResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Modificación no encontrada' });
+    }
+    
+    // Insertar cesión
+    const insertResult = await client.query(
+      `INSERT INTO modification_assignments (
+        modification_id,
+        assignment_type,
+        assignor_name,
+        assignor_id,
+        assignee_name,
+        assignee_id,
+        assignee_id_type,
+        assignment_date,
+        assignment_value,
+        assignment_percentage,
+        related_derived_project_id,
+        assignment_observations,
+        is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)
+      RETURNING 
+        assignment_id,
+        modification_id,
+        assignment_type,
+        assignor_name,
+        assignor_id,
+        assignee_name,
+        assignee_id,
+        assignee_id_type,
+        assignment_date,
+        assignment_value,
+        assignment_percentage,
+        related_derived_project_id,
+        assignment_observations,
+        created_at`,
+      [
+        modificationId,
+        assignment_type,
+        assignor_name || null,
+        assignor_id || null,
+        assignee_name,
+        assignee_id,
+        assignee_id_type || 'CC',
+        assignment_date || null,
+        assignment_value ? parseFloat(assignment_value) : null,
+        assignment_percentage ? parseFloat(assignment_percentage) : null,
+        related_derived_project_id || null,
+        assignment_observations || null
+      ]
+    );
+    
+    await client.query('COMMIT');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Cesión creada exitosamente',
+      assignment: insertResult.rows[0]
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al crear cesión:', error);
+    res.status(500).json({ 
+      error: 'Error al crear la cesión',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// GET - Obtener cesiones de una modificación
+app.get('/api/modifications/:modificationId/assignments', async (req, res) => {
+  try {
+    const { modificationId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        assignment_id,
+        modification_id,
+        assignment_type,
+        assignor_name,
+        assignor_id,
+        assignee_name,
+        assignee_id,
+        assignee_id_type,
+        assignment_date,
+        assignment_value,
+        assignment_percentage,
+        related_derived_project_id,
+        assignment_observations,
+        created_at,
+        is_active
+      FROM modification_assignments
+      WHERE modification_id = $1 AND is_active = true
+      ORDER BY assignment_date DESC`,
+      [modificationId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener cesiones:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Obtener todas las cesiones de un proyecto
+app.get('/api/projects/:projectId/assignments', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const client = await pool.connect();
+    
+    const result = await client.query(
+      `SELECT 
+        ma.assignment_id,
+        ma.modification_id,
+        pm.modification_number,
+        ma.assignment_type,
+        ma.assignor_name,
+        ma.assignor_id,
+        ma.assignee_name,
+        ma.assignee_id,
+        ma.assignee_id_type,
+        ma.assignment_date,
+        ma.assignment_value,
+        ma.assignment_percentage,
+        ma.related_derived_project_id,
+        ma.assignment_observations,
+        ma.created_at
+      FROM modification_assignments ma
+      INNER JOIN project_modifications pm ON ma.modification_id = pm.modification_id
+      WHERE pm.project_id = $1 AND ma.is_active = true
+      ORDER BY ma.assignment_date DESC`,
+      [projectId]
+    );
+    
+    client.release();
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener cesiones del proyecto:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
