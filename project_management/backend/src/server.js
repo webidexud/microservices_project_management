@@ -2400,25 +2400,44 @@ app.get('/api/projects/:projectId/modifications', async (req, res) => {
         pm.created_at,
         pm.updated_at,
         pm.is_active as active,
+        
         ms.suspension_id,
         ms.suspension_start_date,
-        ms.suspension_reason,
-        ms.suspension_days,
-        ms.expected_restart_date,
-        ms.restart_date,
-        ms.actual_suspension_days,
-        ms.restart_observations,
-        ms.suspension_observations,
+        ms.suspension_end_date,
+        ms.planned_restart_date as expected_restart_date,
+        ms.actual_restart_date as restart_date,
+        ms.contractor_justification as suspension_reason,
+        ms.supervisor_justification as suspension_observations,
+        ms.supervisor_justification as restart_observations,
+        ms.suspension_status,
+        ms.entity_supervisor_name,
+        ms.entity_supervisor_id,
+        ms.entity_supervisor_signature_date,
+        ms.restart_modification_id,
+        
         ml.liquidation_id,
+        ml.liquidation_type,
         ml.liquidation_date,
-        ml.final_value,
-        ml.liquidation_act_number,
-        ml.liquidation_act_date,
-        ml.penalties_amount,
-        ml.final_balance,
-        ml.has_pending_obligations,
-        ml.pending_obligations_description,
-        ml.liquidation_observations,
+        ml.resolution_number as liquidation_act_number,
+        ml.resolution_date as liquidation_act_date,
+        ml.initial_contract_value,
+        ml.final_value_with_additions as final_value,
+        ml.execution_percentage,
+        ml.executed_value,
+        ml.pending_payment_value,
+        ml.value_to_release,
+        ml.cdp as liquidation_cdp,
+        ml.cdp_value as liquidation_cdp_value,
+        ml.rp as liquidation_rp,
+        ml.rp_value as liquidation_rp_value,
+        ml.suspensions_summary,
+        ml.extensions_summary,
+        ml.additions_summary,
+        ml.liquidation_signature_date,
+        ml.supervisor_liquidation_request as liquidation_observations,
+        ml.unilateral_cause,
+        ml.cause_analysis,
+        
         mcc.clause_change_id,
         mcc.clause_number,
         mcc.clause_name,
@@ -2428,23 +2447,46 @@ app.get('/api/projects/:projectId/modifications', async (req, res) => {
         mcc.cdp_to_release,
         mcc.rp_to_release,
         mcc.liberation_amount,
+        
         ma.assignment_id,
         ma.assignment_type,
         ma.assignor_name,
         ma.assignor_id,
+        ma.assignor_id_type,
         ma.assignee_name,
         ma.assignee_id,
         ma.assignee_id_type,
+        ma.supervisor_name as assignment_supervisor_name,
+        ma.supervisor_id as assignment_supervisor_id,
         ma.assignment_date,
-        ma.assignment_value,
-        ma.assignment_percentage,
-        ma.assignment_observations
+        ma.assignment_signature_date,
+        ma.value_paid_to_assignor,
+        ma.value_pending_to_assignor,
+        ma.value_to_assign as assignment_value,
+        ma.handover_report_path,
+        ma.technical_report_path,
+        ma.account_statement_path,
+        ma.cdp as assignment_cdp,
+        ma.rp as assignment_rp,
+        ma.guarantee_modification_request,
+        ma.related_derived_project_id,
+        ma.created_at as assignment_created_at
+        
       FROM project_modifications pm
-      LEFT JOIN modification_suspensions ms ON pm.modification_id = ms.modification_id AND ms.is_active = true
-      LEFT JOIN modification_liquidations ml ON pm.modification_id = ml.modification_id AND ml.is_active = true
-      LEFT JOIN modification_clause_changes mcc ON pm.modification_id = mcc.modification_id AND mcc.is_active = true
-      LEFT JOIN modification_assignments ma ON pm.modification_id = ma.modification_id AND ma.is_active = true
-      WHERE pm.project_id = $1 AND pm.is_active = true
+      LEFT JOIN modification_suspensions ms 
+        ON pm.modification_id = ms.modification_id 
+        AND ms.is_active = true
+      LEFT JOIN modification_liquidations ml 
+        ON pm.modification_id = ml.modification_id 
+        AND ml.is_active = true
+      LEFT JOIN modification_clause_changes mcc 
+        ON pm.modification_id = mcc.modification_id 
+        AND mcc.is_active = true
+      LEFT JOIN modification_assignments ma 
+        ON pm.modification_id = ma.modification_id 
+        AND ma.is_active = true
+      WHERE pm.project_id = $1 
+        AND pm.is_active = true
       ORDER BY pm.modification_number DESC`,
       [projectId]
     );
@@ -2456,7 +2498,6 @@ app.get('/api/projects/:projectId/modifications', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 // POST - Crear nueva modificación (VERSIÓN COMPLETA)
 app.post('/api/projects/:projectId/modifications', async (req, res) => {
