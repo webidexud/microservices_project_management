@@ -16,9 +16,14 @@ import {
   FileEdit,
   Info,
   Target,
-  Paperclip,
   AlertCircle,
   Star,
+  Plus,
+  PlayCircle,
+  FileX,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +43,7 @@ export default function ProjectView() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("general")
+  const [expandedModification, setExpandedModification] = useState(null)
 
   // Cargar proyecto completo
   const { data: project, isLoading: loadingProject } = useQuery({
@@ -145,13 +151,50 @@ export default function ProjectView() {
     return colors[status] || "default"
   }
 
-  const getModificationBadge = (type) => {
-    const badges = {
-      ADDITION: { variant: "success", label: "Adición" },
-      EXTENSION: { variant: "info", label: "Prórroga" },
-      BOTH: { variant: "warning", label: "Adición y Prórroga" },
+  const getModificationIcon = (type) => {
+    const icons = {
+      ADDITION: DollarSign,
+      EXTENSION: Clock,
+      BOTH: Plus,
+      SUSPENSION: AlertCircle,
+      RESTART: PlayCircle,
+      LIQUIDATION: FileX,
+      ASSIGNMENT: RefreshCw,
+      MODIFICATION: FileEdit,
     }
-    return badges[type] || { variant: "default", label: type }
+    return icons[type] || FileEdit
+  }
+
+  const getModificationColor = (type) => {
+    const colors = {
+      ADDITION: "text-green-600 bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800",
+      EXTENSION: "text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800",
+      BOTH: "text-purple-600 bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800",
+      SUSPENSION: "text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800",
+      RESTART: "text-teal-600 bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800",
+      LIQUIDATION: "text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800",
+      ASSIGNMENT: "text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800",
+      MODIFICATION: "text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800",
+    }
+    return colors[type] || "text-gray-600 bg-gray-50 border-gray-200"
+  }
+
+  const getModificationLabel = (type) => {
+    const labels = {
+      ADDITION: "Adición Presupuestal",
+      EXTENSION: "Prórroga",
+      BOTH: "Adición y Prórroga",
+      SUSPENSION: "Suspensión",
+      RESTART: "Reinicio",
+      LIQUIDATION: "Liquidación",
+      ASSIGNMENT: "Cesión",
+      MODIFICATION: "Modificación de Cláusulas",
+    }
+    return labels[type] || type
+  }
+
+  const toggleExpand = (modId) => {
+    setExpandedModification(expandedModification === modId ? null : modId)
   }
 
   const tabs = [
@@ -255,40 +298,53 @@ export default function ProjectView() {
                     {project.status_name}
                   </Badge>
                 </div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                  {project.code} {project.external_project_number && `• ${project.external_project_number}`}
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                  {project.project_year}-{String(project.internal_project_number).padStart(3, '0')}
+                  {project.external_project_number && ` • ${project.external_project_number}`}
                 </p>
               </div>
             </div>
-            <Button onClick={() => navigate(`/projects/edit/${id}`)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
+            <Button
+              onClick={() => navigate(`/projects/edit/${id}`)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Editar Proyecto
             </Button>
           </div>
 
-          {/* Métricas rápidas */}
-          <div className="grid grid-cols-3 gap-4 mt-6">
+          {/* Métricas Rápidas */}
+          <div className="grid grid-cols-4 gap-4 mt-6">
             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
               <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm mb-1">
-                <Clock className="h-4 w-4" />
-                <span>Cronograma</span>
+                <DollarSign className="h-4 w-4" />
+                <span>Valor Total</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Estado</p>
-                  <Badge variant={getStatusColor(project.status_name)} className="mt-1">
-                    {project.status_name}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Duración Total</p>
-                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mt-1">
-                    {duration.years > 0 && `${duration.years}a `}
-                    {duration.months > 0 && `${duration.months}m `}
-                    {duration.days}d
-                  </p>
-                </div>
+              <p className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                {modificationsSummary
+                  ? formatCurrency(modificationsSummary.final_total_value)
+                  : formatCurrency(project.project_value)}
+              </p>
+              {modificationsSummary && modificationsSummary.total_additions > 0 && (
+                <p className="text-xs text-success mt-1">
+                  +{formatCurrency(modificationsSummary.total_additions)} en adiciones
+                </p>
+              )}
+            </div>
+
+            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
+              <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm mb-1">
+                <Calendar className="h-4 w-4" />
+                <span>Duración</span>
               </div>
+              <p className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                {duration.totalDays} días
+              </p>
+              {totalExtensionDays > 0 && (
+                <p className="text-xs text-info mt-1">
+                  +{totalExtensionDays} días extendidos
+                </p>
+              )}
             </div>
 
             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
@@ -335,15 +391,12 @@ export default function ProjectView() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
                     activeTab === tab.id
-                      ? "text-primary"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
                   {tab.label}
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
-                  )}
                 </button>
               )
             })}
@@ -351,187 +404,151 @@ export default function ProjectView() {
         </div>
       </div>
 
-      {/* Contenido principal */}
-      <div className="max-w-7xl mx-auto p-6">
+      {/* Contenido de Tabs */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* TAB: INFORMACIÓN GENERAL */}
         {activeTab === "general" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Columna principal */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Información Básica */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Info className="h-5 w-5 text-primary" />
-                    Información Básica
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Código
-                      </label>
-                      <p className="text-base font-medium mt-1">{project.project_id || 'N/A'}</p>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Año
-                      </label>
-                      <p className="text-base font-medium mt-1">{project.project_year}</p>
-                    </div>
-
-                    {project.external_project_number && (
-                      <div className="col-span-2">
-                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                          Número Externo
-                        </label>
-                        <p className="text-base font-medium mt-1">
-                          {project.external_project_number}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
+          <div className="space-y-6">
+            {/* Identificación del Proyecto */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Info className="h-5 w-5 text-primary" />
+                  Identificación del Proyecto
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Objeto del Proyecto
+                      Año
                     </label>
-                    <p className="text-sm leading-relaxed mt-2 text-neutral-700 dark:text-neutral-300">
-                      {project.project_purpose}
+                    <p className="text-base font-medium mt-1">
+                      {project.project_year}
                     </p>
                   </div>
 
-                  {project.observations && (
-                    <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                      <label className="text-xs font-medium text-amber-800 dark:text-amber-400 uppercase tracking-wide flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4" />
-                        Observaciones
+                  <div>
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                      Número Interno
+                    </label>
+                    <p className="text-base font-medium mt-1">
+                      {String(project.internal_project_number).padStart(3, '0')}
+                    </p>
+                  </div>
+
+                  {project.external_project_number && (
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                        Número Externo
                       </label>
-                      <p className="text-sm mt-2 text-amber-900 dark:text-amber-300">
-                        {project.observations}
+                      <p className="text-base font-medium mt-1">
+                        {project.external_project_number}
                       </p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Entidades y Responsables */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    Entidades y Responsables
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                    Objeto del Proyecto
+                  </label>
+                  <p className="text-sm leading-relaxed mt-2 text-neutral-700 dark:text-neutral-300">
+                    {project.project_purpose}
+                  </p>
+                </div>
+
+                {project.observations && (
+                  <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                    <label className="text-xs font-medium text-amber-800 dark:text-amber-400 uppercase tracking-wide flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Observaciones
+                    </label>
+                    <p className="text-sm mt-2 text-amber-900 dark:text-amber-300">
+                      {project.observations}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Entidades y Responsables */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Entidades y Responsables
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
+                      <Building2 className="h-3 w-3" />
+                      Entidad
+                    </label>
+                    <p className="text-base font-medium mt-1">
+                      {project.entity_name}
+                    </p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {project.entity_type_name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
+                      <Briefcase className="h-3 w-3" />
+                      Dependencia Ejecutora
+                    </label>
+                    <p className="text-base font-medium mt-1">
+                      {project.executing_department_name}
+                    </p>
+                  </div>
+
+                  {project.ordering_official_name && (
                     <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
-                        <Building2 className="h-3 w-3" />
-                        Entidad
-                      </label>
-                      <p className="text-sm font-medium mt-2">
-                        {project.entity_name || 'N/A'}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
-                        <Briefcase className="h-3 w-3" />
-                        Dependencia Ejecutora
-                      </label>
-                      <p className="text-sm font-medium mt-2">
-                        {project.department_name || 'N/A'}
-                      </p>
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
-                        <Users className="h-3 w-3" />
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
                         Funcionario Ordenador
                       </label>
-                      <p className="text-sm font-medium mt-2">
-                        {project.ordering_official_name || 'N/A'}
+                      <p className="text-base font-medium mt-1">
+                        {project.ordering_official_name}
                       </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Clasificación */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Target className="h-5 w-5 text-primary" />
-                    Clasificación
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Tipo de Proyecto
-                      </label>
-                      <p className="text-sm font-medium mt-1">
-                        {project.project_type || 'N/A'}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Tipo de Financiación
-                      </label>
-                      <p className="text-sm font-medium mt-1">
-                        {project.financing_type || 'N/A'}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Modalidad de Ejecución
-                      </label>
-                      <p className="text-sm font-medium mt-1">
-                        {project.execution_modality || 'N/A'}
-                      </p>
-                    </div>
-
-                    {project.accounting_code && (
-                      <div>
-                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                          Código Contable
-                        </label>
-                        <p className="text-sm font-mono mt-1">
-                          {project.accounting_code}
+                      {project.ordering_official_position && (
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                          {project.ordering_official_position}
                         </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                      )}
+                    </div>
+                  )}
 
-            {/* Columna lateral */}
-            <div className="space-y-6">
-              {/* Cronograma */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-primary" />
-                    Cronograma
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                      Estado del Proyecto
-                    </label>
-                    <Badge variant={getStatusColor(project.status_name)} className="mt-2">
-                      {project.status_name}
-                    </Badge>
-                  </div>
+                  {project.main_email && (
+                    <div>
+                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
+                        <Mail className="h-3 w-3" />
+                        Email Principal
+                      </label>
+                      <a
+                        href={`mailto:${project.main_email}`}
+                        className="text-sm text-primary hover:underline mt-1 block"
+                      >
+                        {project.main_email}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
+            {/* Fechas y Duración */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Fechas y Duración
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4">
                   {project.subscription_date && (
                     <div>
                       <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
@@ -585,70 +602,57 @@ export default function ProjectView() {
                       {duration.days} día{duration.days !== 1 ? 's' : ''}
                     </p>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                      ({duration.totalDays} días totales)
+                      {duration.totalDays} días totales
                     </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Contacto */}
+            {/* Información Administrativa */}
+            {(project.administrative_act || project.secop_link || project.session_type) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-primary" />
-                    Contacto
+                    <FileText className="h-5 w-5 text-primary" />
+                    Información Administrativa
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {project.main_email && (
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Email Principal
-                      </label>
-                      <p className="text-sm mt-1">{project.main_email}</p>
-                    </div>
-                  )}
-
-                  {project.secondary_emails && project.secondary_emails.length > 0 && (
-                    <div>
-                      <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Emails Secundarios
-                      </label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {project.secondary_emails.map((email, index) => (
-                          <Badge key={index} variant="outline">
-                            {email}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Enlaces */}
-              {(project.administrative_act || project.secop_link) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <LinkIcon className="h-5 w-5 text-primary" />
-                      Enlaces
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
                     {project.administrative_act && (
                       <div>
                         <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
                           Acto Administrativo
                         </label>
-                        <p className="text-sm mt-1">{project.administrative_act}</p>
+                        <p className="text-sm font-medium mt-1">
+                          {project.administrative_act}
+                        </p>
+                      </div>
+                    )}
+
+                    {project.session_type && (
+                      <div>
+                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                          Tipo de Sesión
+                        </label>
+                        <p className="text-sm font-medium mt-1">
+                          {project.session_type}
+                        </p>
+                        {project.minutes_number && (
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                            Acta: {project.minutes_number}
+                            {project.minutes_date && ` - ${formatDate(project.minutes_date)}`}
+                          </p>
+                        )}
                       </div>
                     )}
 
                     {project.secop_link && (
-                      <div>
-                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                          SECOP
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide flex items-center gap-2">
+                          <LinkIcon className="h-3 w-3" />
+                          Enlace SECOP
                         </label>
                         <a
                           href={project.secop_link}
@@ -660,10 +664,10 @@ export default function ProjectView() {
                         </a>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -758,7 +762,7 @@ export default function ProjectView() {
 
                   <div>
                     <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                      Contrapartida en Especie (COP)
+                      Aporte Universidad
                     </label>
                     <p className="text-2xl font-semibold mt-2">
                       {formatCurrency(project.university_contribution)}
@@ -775,7 +779,127 @@ export default function ProjectView() {
           </div>
         )}
 
-        {/* TAB: MODIFICACIONES */}
+        {/* TAB: CÓDIGOS RUP */}
+        {activeTab === "rup" && (
+          <div className="space-y-6">
+            {projectRupCodes && projectRupCodes.codes && projectRupCodes.codes.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    Códigos Asignados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {projectRupCodes.codes.map((rupCode, index) => (
+                      <div
+                        key={rupCode.id || index}
+                        className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-5 bg-neutral-50 dark:bg-neutral-800/50 hover:shadow-md transition-shadow"
+                      >
+                        {/* Header del código */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Target className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-lg font-bold text-primary">
+                                  {rupCode.code}
+                                </span>
+                                {rupCode.is_main_code && (
+                                  <Badge variant="success" className="text-xs">
+                                    <Star className="h-3 w-3 mr-1" />
+                                    Principal
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                                {rupCode.product_name || rupCode.description}
+                              </p>
+                            </div>
+                          </div>
+                          {rupCode.participation_percentage && (
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-success">
+                                {rupCode.participation_percentage}%
+                              </p>
+                              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                participación
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Jerarquía */}
+                        <div className="grid grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <p className="text-neutral-500 dark:text-neutral-400 mb-1">
+                              Segmento
+                            </p>
+                            <p className="font-medium">
+                              {rupCode.segment_code} - {rupCode.segment_name}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-neutral-500 dark:text-neutral-400 mb-1">
+                              Familia
+                            </p>
+                            <p className="font-medium">
+                              {rupCode.family_code} - {rupCode.family_name}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-neutral-500 dark:text-neutral-400 mb-1">
+                              Clase
+                            </p>
+                            <p className="font-medium">
+                              {rupCode.class_code} - {rupCode.class_name}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-neutral-500 dark:text-neutral-400 mb-1">
+                              Producto
+                            </p>
+                            <p className="font-medium">
+                              {rupCode.product_code} - {rupCode.product_name}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Observaciones generales */}
+                  {projectRupCodes.general_observations && (
+                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <p className="text-xs font-medium text-blue-800 dark:text-blue-400 uppercase tracking-wide mb-2">
+                        Observaciones Generales
+                      </p>
+                      <p className="text-sm text-blue-900 dark:text-blue-300">
+                        {projectRupCodes.general_observations}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="pt-12 pb-12">
+                  <div className="text-center text-neutral-500 dark:text-neutral-400">
+                    <Target className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                    <p className="font-medium">No hay códigos RUP asignados</p>
+                    <p className="text-sm mt-2">
+                      Los códigos RUP se pueden asignar al editar el proyecto
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* TAB: MODIFICACIONES - VERSIÓN COMPLETA Y DETALLADA */}
         {activeTab === "modifications" && (
           <div className="space-y-6">
             {/* Resumen */}
@@ -827,66 +951,695 @@ export default function ProjectView() {
               </div>
             )}
 
-            {/* Tabla */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Historial de Modificaciones</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {modifications && modifications.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>#</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Adición</TableHead>
-                        <TableHead>Días Extendidos</TableHead>
-                        <TableHead>Nueva Fecha Fin</TableHead>
-                        <TableHead>Aprobación</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {modifications.map((mod) => {
-                        const badge = getModificationBadge(mod.type)
-                        return (
-                          <TableRow key={mod.modification_id}>
-                            <TableCell className="font-medium">
-                              {mod.number}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={badge.variant}>{badge.label}</Badge>
-                            </TableCell>
-                            <TableCell>{formatDate(mod.created_at)}</TableCell>
-                            <TableCell>
-                              {mod.addition_value > 0
-                                ? formatCurrency(mod.addition_value)
-                                : "-"}
-                            </TableCell>
-                            <TableCell>
-                              {mod.extension_days > 0 ? `+${mod.extension_days}` : "-"}
-                            </TableCell>
-                            <TableCell>
-                              {mod.new_end_date ? formatDate(mod.new_end_date) : "-"}
-                            </TableCell>
-                            <TableCell>
-                              {mod.approval_date ? formatDate(mod.approval_date) : "-"}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-12">
-                    <FileEdit className="h-16 w-16 mx-auto text-neutral-300 dark:text-neutral-700 mb-4" />
-                    <p className="text-neutral-600 dark:text-neutral-400">
-                      No hay modificaciones registradas
+            {/* Lista Detallada de Modificaciones */}
+            {modifications && modifications.length > 0 ? (
+              <div className="space-y-4">
+                {modifications.map((mod) => {
+                  const Icon = getModificationIcon(mod.type)
+                  const isExpanded = expandedModification === mod.id
+
+                  return (
+                    <Card key={mod.id} className="overflow-hidden">
+                      {/* Header de la modificación */}
+                      <div
+                        className={`p-4 cursor-pointer ${getModificationColor(mod.type)} border-l-4`}
+                        onClick={() => toggleExpand(mod.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-white/80 dark:bg-neutral-800 flex items-center justify-center">
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-lg">
+                                  Modificación #{mod.number}
+                                </h3>
+                                <Badge variant="secondary">
+                                  {getModificationLabel(mod.type)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm mt-1">
+                                {formatDate(mod.approval_date || mod.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp className="h-5 w-5" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Contenido expandible */}
+                      {isExpanded && (
+                        <CardContent className="p-6 space-y-6">
+                          {/* Información básica */}
+                          <div className="grid grid-cols-2 gap-4">
+                            {mod.administrative_act && (
+                              <div>
+                                <label className="text-xs font-medium text-neutral-500 uppercase">
+                                  Acto Administrativo
+                                </label>
+                                <p className="text-sm font-medium mt-1">{mod.administrative_act}</p>
+                              </div>
+                            )}
+                            {mod.approval_date && (
+                              <div>
+                                <label className="text-xs font-medium text-neutral-500 uppercase">
+                                  Fecha de Aprobación
+                                </label>
+                                <p className="text-sm font-medium mt-1">
+                                  {formatDate(mod.approval_date)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Justificación */}
+                          {mod.justification && (
+                            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
+                              <label className="text-xs font-medium text-neutral-500 uppercase">
+                                Justificación
+                              </label>
+                              <p className="text-sm mt-2 text-neutral-700 dark:text-neutral-300">
+                                {mod.justification}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* DETALLES ESPECÍFICOS POR TIPO */}
+
+                          {/* ADICIÓN */}
+                          {(mod.type === "ADDITION" || mod.type === "BOTH") && mod.addition_value && (
+                            <Card className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
+                              <CardHeader>
+                                <CardTitle className="text-base text-green-800 dark:text-green-300">
+                                  💰 Detalles de Adición Presupuestal
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase">
+                                      Valor de Adición
+                                    </label>
+                                    <p className="text-lg font-bold text-green-900 dark:text-green-200">
+                                      {formatCurrency(mod.addition_value)}
+                                    </p>
+                                  </div>
+                                  {mod.new_total_value && (
+                                    <div>
+                                      <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase">
+                                        Nuevo Valor Total
+                                      </label>
+                                      <p className="text-lg font-bold text-green-900 dark:text-green-200">
+                                        {formatCurrency(mod.new_total_value)}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {mod.cdp && (
+                                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-green-300 dark:border-green-700">
+                                    <div>
+                                      <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase">
+                                        CDP
+                                      </label>
+                                      <p className="text-sm font-medium text-green-900 dark:text-green-200">{mod.cdp}</p>
+                                    </div>
+                                    {mod.cdp_value && (
+                                      <div>
+                                        <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase">
+                                          Valor CDP
+                                        </label>
+                                        <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                                          {formatCurrency(mod.cdp_value)}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {mod.rp && (
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase">
+                                        RP
+                                      </label>
+                                      <p className="text-sm font-medium text-green-900 dark:text-green-200">{mod.rp}</p>
+                                    </div>
+                                    {mod.rp_value && (
+                                      <div>
+                                        <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase">
+                                          Valor RP
+                                        </label>
+                                        <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                                          {formatCurrency(mod.rp_value)}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {mod.supervisor_name && (
+                                  <div className="pt-3 border-t border-green-300 dark:border-green-700">
+                                    <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase">
+                                      Supervisor
+                                    </label>
+                                    <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                                      {mod.supervisor_name}
+                                      {mod.supervisor_id && ` - ${mod.supervisor_id}`}
+                                    </p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* PRÓRROGA */}
+                          {(mod.type === "EXTENSION" || mod.type === "BOTH") && mod.extension_days && (
+                            <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                              <CardHeader>
+                                <CardTitle className="text-base text-blue-800 dark:text-blue-300">
+                                  ⏱️ Detalles de Prórroga
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase">
+                                      Días de Prórroga
+                                    </label>
+                                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">
+                                      {mod.extension_days} días
+                                    </p>
+                                  </div>
+                                  {mod.new_end_date && (
+                                    <div>
+                                      <label className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase">
+                                        Nueva Fecha de Finalización
+                                      </label>
+                                      <p className="text-lg font-bold text-blue-900 dark:text-blue-200">
+                                        {formatDate(mod.new_end_date)}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {mod.extension_period_text && (
+                                  <div className="bg-blue-100 dark:bg-blue-900/40 rounded p-3">
+                                    <label className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase">
+                                      Período en Texto
+                                    </label>
+                                    <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mt-1">
+                                      {mod.extension_period_text}
+                                    </p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* SUSPENSIÓN */}
+                          {mod.type === "SUSPENSION" && mod.suspension_start_date && (
+                            <Card className="bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800">
+                              <CardHeader>
+                                <CardTitle className="text-base text-orange-800 dark:text-orange-300">
+                                  ⏸️ Detalles de Suspensión
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div>
+                                    <label className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase">
+                                      Fecha de Inicio
+                                    </label>
+                                    <p className="text-sm font-bold text-orange-900 dark:text-orange-200">
+                                      {formatDate(mod.suspension_start_date)}
+                                    </p>
+                                  </div>
+                                  {mod.suspension_end_date && (
+                                    <div>
+                                      <label className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase">
+                                        Fecha de Fin
+                                      </label>
+                                      <p className="text-sm font-bold text-orange-900 dark:text-orange-200">
+                                        {formatDate(mod.suspension_end_date)}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {mod.suspension_days && (
+                                    <div>
+                                      <label className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase">
+                                        Días Suspendidos
+                                      </label>
+                                      <p className="text-xl font-bold text-orange-900 dark:text-orange-200">
+                                        {mod.suspension_days}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {mod.expected_restart_date && (
+                                  <div className="bg-orange-100 dark:bg-orange-900/40 rounded p-3">
+                                    <label className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase">
+                                      Fecha Esperada de Reinicio
+                                    </label>
+                                    <p className="text-sm font-medium text-orange-900 dark:text-orange-200 mt-1">
+                                      {formatDate(mod.expected_restart_date)}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {mod.suspension_reason && (
+                                  <div className="pt-3 border-t border-orange-300 dark:border-orange-700">
+                                    <label className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase">
+                                      Motivo de Suspensión
+                                    </label>
+                                    <p className="text-sm text-orange-900 dark:text-orange-200 mt-1">
+                                      {mod.suspension_reason}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {mod.suspension_observations && (
+                                  <div>
+                                    <label className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase">
+                                      Observaciones
+                                    </label>
+                                    <p className="text-sm text-orange-900 dark:text-orange-200 mt-1">
+                                      {mod.suspension_observations}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {mod.suspension_status && (
+                                  <div className="flex items-center gap-2">
+                                    <Badge
+                                      variant={
+                                        mod.suspension_status === "ACTIVE"
+                                          ? "warning"
+                                          : mod.suspension_status === "RESTARTED"
+                                          ? "success"
+                                          : "default"
+                                      }
+                                    >
+                                      {mod.suspension_status === "ACTIVE"
+                                        ? "Activa"
+                                        : mod.suspension_status === "RESTARTED"
+                                        ? "Reiniciada"
+                                        : mod.suspension_status}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* REINICIO */}
+                          {mod.type === "RESTART" && mod.restart_date && (
+                            <Card className="bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800">
+                              <CardHeader>
+                                <CardTitle className="text-base text-teal-800 dark:text-teal-300">
+                                  ▶️ Detalles de Reinicio
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs font-medium text-teal-700 dark:text-teal-400 uppercase">
+                                      Fecha de Reinicio
+                                    </label>
+                                    <p className="text-lg font-bold text-teal-900 dark:text-teal-200">
+                                      {formatDate(mod.restart_date)}
+                                    </p>
+                                  </div>
+                                  {mod.actual_suspension_days && (
+                                    <div>
+                                      <label className="text-xs font-medium text-teal-700 dark:text-teal-400 uppercase">
+                                        Días Suspendidos (Real)
+                                      </label>
+                                      <p className="text-xl font-bold text-teal-900 dark:text-teal-200">
+                                        {mod.actual_suspension_days} días
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {mod.restart_observations && (
+                                  <div className="bg-teal-100 dark:bg-teal-900/40 rounded p-3">
+                                    <label className="text-xs font-medium text-teal-700 dark:text-teal-400 uppercase">
+                                      Observaciones del Reinicio
+                                    </label>
+                                    <p className="text-sm text-teal-900 dark:text-teal-200 mt-1">
+                                      {mod.restart_observations}
+                                    </p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* LIQUIDACIÓN */}
+                          {mod.type === "LIQUIDATION" && mod.liquidation_date && (
+                            <Card className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
+                              <CardHeader>
+                                <CardTitle className="text-base text-red-800 dark:text-red-300">
+                                  📋 Detalles de Liquidación
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                      Fecha de Liquidación
+                                    </label>
+                                    <p className="text-sm font-bold text-red-900 dark:text-red-200">
+                                      {formatDate(mod.liquidation_date)}
+                                    </p>
+                                  </div>
+                                  {mod.liquidation_type && (
+                                    <div>
+                                      <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                        Tipo de Liquidación
+                                      </label>
+                                      <Badge variant={mod.liquidation_type === "BILATERAL" ? "info" : "warning"}>
+                                        {mod.liquidation_type}
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {mod.final_value && (
+                                  <div className="bg-red-100 dark:bg-red-900/40 rounded p-3">
+                                    <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                      Valor Final del Contrato
+                                    </label>
+                                    <p className="text-lg font-bold text-red-900 dark:text-red-200">
+                                      {formatCurrency(mod.final_value)}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {mod.initial_contract_value && (
+                                  <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                      <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                        Valor Inicial
+                                      </label>
+                                      <p className="text-sm font-medium text-red-900 dark:text-red-200">
+                                        {formatCurrency(mod.initial_contract_value)}
+                                      </p>
+                                    </div>
+                                    {mod.execution_percentage !== undefined && (
+                                      <div>
+                                        <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                          % Ejecución
+                                        </label>
+                                        <p className="text-xl font-bold text-red-900 dark:text-red-200">
+                                          {mod.execution_percentage}%
+                                        </p>
+                                      </div>
+                                    )}
+                                    {mod.executed_value && (
+                                      <div>
+                                        <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                          Valor Ejecutado
+                                        </label>
+                                        <p className="text-sm font-medium text-red-900 dark:text-red-200">
+                                          {formatCurrency(mod.executed_value)}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {mod.liquidation_act_number && (
+                                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-red-300 dark:border-red-700">
+                                    <div>
+                                      <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                        Número de Resolución
+                                      </label>
+                                      <p className="text-sm font-medium text-red-900 dark:text-red-200">
+                                        {mod.liquidation_act_number}
+                                      </p>
+                                    </div>
+                                    {mod.liquidation_act_date && (
+                                      <div>
+                                        <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                          Fecha de Resolución
+                                        </label>
+                                        <p className="text-sm font-medium text-red-900 dark:text-red-200">
+                                          {formatDate(mod.liquidation_act_date)}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {mod.liquidation_observations && (
+                                  <div className="pt-3 border-t border-red-300 dark:border-red-700">
+                                    <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase">
+                                      Observaciones
+                                    </label>
+                                    <p className="text-sm text-red-900 dark:text-red-200 mt-1">
+                                      {mod.liquidation_observations}
+                                    </p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* CESIÓN */}
+                          {mod.type === "ASSIGNMENT" && mod.assignee_name && (
+                            <Card className="bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800">
+                              <CardHeader>
+                                <CardTitle className="text-base text-indigo-800 dark:text-indigo-300">
+                                  🔄 Detalles de Cesión
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs font-medium text-indigo-700 dark:text-indigo-400 uppercase">
+                                      Tipo de Cesión
+                                    </label>
+                                    <Badge variant="info">{mod.assignment_type}</Badge>
+                                  </div>
+                                  {mod.assignment_date && (
+                                    <div>
+                                      <label className="text-xs font-medium text-indigo-700 dark:text-indigo-400 uppercase">
+                                        Fecha de Cesión
+                                      </label>
+                                      <p className="text-sm font-bold text-indigo-900 dark:text-indigo-200">
+                                        {formatDate(mod.assignment_date)}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 bg-indigo-100 dark:bg-indigo-900/40 rounded p-3">
+                                  <div>
+                                    <label className="text-xs font-medium text-indigo-700 dark:text-indigo-400 uppercase">
+                                      Cedente
+                                    </label>
+                                    <p className="text-sm font-bold text-indigo-900 dark:text-indigo-200">
+                                      {mod.assignor_name}
+                                    </p>
+                                    {mod.assignor_id && (
+                                      <p className="text-xs text-indigo-700 dark:text-indigo-400">{mod.assignor_id}</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-indigo-700 dark:text-indigo-400 uppercase">
+                                      Cesionario
+                                    </label>
+                                    <p className="text-sm font-bold text-indigo-900 dark:text-indigo-200">
+                                      {mod.assignee_name}
+                                    </p>
+                                    {mod.assignee_id && (
+                                      <p className="text-xs text-indigo-700 dark:text-indigo-400">{mod.assignee_id}</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {mod.assignment_value && (
+                                  <div className="bg-indigo-100 dark:bg-indigo-900/40 rounded p-3">
+                                    <label className="text-xs font-medium text-indigo-700 dark:text-indigo-400 uppercase">
+                                      Valor a Ceder
+                                    </label>
+                                    <p className="text-lg font-bold text-indigo-900 dark:text-indigo-200">
+                                      {formatCurrency(mod.assignment_value)}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {(mod.value_paid_to_assignor || mod.value_pending_to_assignor) && (
+                                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-indigo-300 dark:border-indigo-700">
+                                    {mod.value_paid_to_assignor && (
+                                      <div>
+                                        <label className="text-xs font-medium text-indigo-700 dark:text-indigo-400 uppercase">
+                                          Valor Pagado al Cedente
+                                        </label>
+                                        <p className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
+                                          {formatCurrency(mod.value_paid_to_assignor)}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {mod.value_pending_to_assignor && (
+                                      <div>
+                                        <label className="text-xs font-medium text-indigo-700 dark:text-indigo-400 uppercase">
+                                          Valor Pendiente al Cedente
+                                        </label>
+                                        <p className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
+                                          {formatCurrency(mod.value_pending_to_assignor)}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* MODIFICACIÓN DE CLÁUSULAS */}
+                          {mod.type === "MODIFICATION" && mod.clause_number && (
+                            <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
+                              <CardHeader>
+                                <CardTitle className="text-base text-yellow-800 dark:text-yellow-300">
+                                  📝 Cambio de Cláusulas
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs font-medium text-yellow-700 dark:text-yellow-400 uppercase">
+                                      Número de Cláusula
+                                    </label>
+                                    <p className="text-lg font-bold text-yellow-900 dark:text-yellow-200">
+                                      {mod.clause_number}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-yellow-700 dark:text-yellow-400 uppercase">
+                                      Nombre de la Cláusula
+                                    </label>
+                                    <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
+                                      {mod.clause_name}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {mod.original_clause_text && (
+                                  <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded p-3">
+                                    <label className="text-xs font-medium text-red-700 dark:text-red-400 uppercase flex items-center gap-1">
+                                      <span className="text-red-500">✗</span> Texto Original
+                                    </label>
+                                    <p className="text-sm text-red-900 dark:text-red-200 mt-1">
+                                      {mod.original_clause_text}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {mod.new_clause_text && (
+                                  <div className="bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-800 rounded p-3">
+                                    <label className="text-xs font-medium text-green-700 dark:text-green-400 uppercase flex items-center gap-1">
+                                      <span className="text-green-500">✓</span> Nuevo Texto
+                                    </label>
+                                    <p className="text-sm text-green-900 dark:text-green-200 mt-1">
+                                      {mod.new_clause_text}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {mod.requires_resource_liberation && (
+                                  <div className="bg-yellow-100 dark:bg-yellow-900/40 rounded p-3">
+                                    <label className="text-xs font-medium text-yellow-700 dark:text-yellow-400 uppercase">
+                                      ⚠️ Liberación de Recursos
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-3 mt-2">
+                                      {mod.cdp_to_release && (
+                                        <div>
+                                          <p className="text-xs text-yellow-700 dark:text-yellow-400">CDP a Liberar</p>
+                                          <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
+                                            {mod.cdp_to_release}
+                                          </p>
+                                        </div>
+                                      )}
+                                      {mod.rp_to_release && (
+                                        <div>
+                                          <p className="text-xs text-yellow-700 dark:text-yellow-400">RP a Liberar</p>
+                                          <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
+                                            {mod.rp_to_release}
+                                          </p>
+                                        </div>
+                                      )}
+                                      {mod.liberation_amount && (
+                                        <div>
+                                          <p className="text-xs text-yellow-700 dark:text-yellow-400">Monto</p>
+                                          <p className="text-sm font-bold text-yellow-900 dark:text-yellow-200">
+                                            {formatCurrency(mod.liberation_amount)}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Información adicional común */}
+                          {(mod.entity_legal_representative_name || mod.ordering_official_id) && (
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                              {mod.entity_legal_representative_name && (
+                                <div>
+                                  <label className="text-xs font-medium text-neutral-500 uppercase">
+                                    Representante Legal
+                                  </label>
+                                  <p className="text-sm font-medium mt-1">
+                                    {mod.entity_legal_representative_name}
+                                  </p>
+                                  {mod.entity_legal_representative_id && (
+                                    <p className="text-xs text-neutral-500">
+                                      {mod.entity_legal_representative_id_type}:{" "}
+                                      {mod.entity_legal_representative_id}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                              {mod.ordering_official_id && (
+                                <div>
+                                  <label className="text-xs font-medium text-neutral-500 uppercase">
+                                    Funcionario Ordenador
+                                  </label>
+                                  <p className="text-sm font-medium mt-1">ID: {mod.ordering_official_id}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      )}
+                    </Card>
+                  )
+                })}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="pt-12 pb-12">
+                  <div className="text-center text-neutral-500 dark:text-neutral-400">
+                    <FileEdit className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                    <p className="font-medium">No hay modificaciones registradas</p>
+                    <p className="text-sm mt-2">
+                      Las modificaciones aparecerán aquí una vez sean agregadas
                     </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -910,36 +1663,41 @@ export default function ProjectView() {
                   <div className="space-y-8">
                     {timelineEvents.map((event, index) => {
                       const Icon = event.icon
-                      const colorClasses = {
-                        info: 'bg-info/10 border-info text-info',
-                        success: 'bg-success/10 border-success text-success',
-                        warning: 'bg-warning/10 border-warning text-warning',
-                        neutral: 'bg-neutral-100 border-neutral-300 text-neutral-600',
-                        primary: 'bg-primary/10 border-primary text-primary',
-                      }
-                      
                       return (
-                        <div key={index} className="relative flex gap-6">
-                          <div className={`relative z-10 flex h-16 w-16 items-center justify-center rounded-full border-2 ${colorClasses[event.color]}`}>
+                        <div key={index} className="relative flex gap-4">
+                          {/* Icono */}
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center bg-${event.color} text-white z-10 flex-shrink-0`}>
                             <Icon className="h-6 w-6" />
                           </div>
-                          <div className="flex-1 pt-3">
-                            <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
-                              {event.title}
-                            </h3>
-                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                              {event.description}
-                            </p>
-                            {event.details && (
-                              <div className="mt-2 text-sm text-neutral-500 dark:text-neutral-500">
-                                {event.details.addition_value > 0 && (
-                                  <p>Adición: {formatCurrency(event.details.addition_value)}</p>
-                                )}
-                                {event.details.extension_days > 0 && (
-                                  <p>Prórroga: +{event.details.extension_days} días</p>
-                                )}
-                              </div>
-                            )}
+
+                          {/* Contenido */}
+                          <div className="flex-1 pb-8">
+                            <div className="bg-white dark:bg-neutral-800 rounded-lg p-4 shadow-sm border border-neutral-200 dark:border-neutral-700">
+                              <h3 className="font-semibold text-lg mb-1">
+                                {event.title}
+                              </h3>
+                              <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-2">
+                                {event.description}
+                              </p>
+
+                              {event.details && (
+                                <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                                  <Badge variant="secondary">
+                                    {getModificationLabel(event.details.type)}
+                                  </Badge>
+                                  {event.details.addition_value > 0 && (
+                                    <p className="text-sm mt-2">
+                                      <strong>Adición:</strong> {formatCurrency(event.details.addition_value)}
+                                    </p>
+                                  )}
+                                  {event.details.extension_days > 0 && (
+                                    <p className="text-sm mt-1">
+                                      <strong>Prórroga:</strong> +{event.details.extension_days} días
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )
@@ -948,228 +1706,6 @@ export default function ProjectView() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        )}
-        {/* TAB: CÓDIGOS RUP */}
-        {activeTab === "rup" && (
-          <div className="space-y-6">
-            {/* Header de sección */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Target className="h-6 w-6 text-primary" />
-                  Códigos RUP Asignados
-                </h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                  Registro Único de Prestadores - Clasificación del proyecto
-                </p>
-              </div>
-            </div>
-
-            {/* Resumen de códigos */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-                    Total Códigos
-                  </p>
-                  <p className="text-3xl font-semibold text-primary">
-                    {projectRupCodes?.codes?.length || 0}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-                    Código Principal
-                  </p>
-                  <p className="text-3xl font-semibold text-success">
-                    {projectRupCodes?.codes?.filter(code => code.is_main_code).length || 0}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-                    Códigos Secundarios
-                  </p>
-                  <p className="text-3xl font-semibold text-info">
-                    {projectRupCodes?.codes?.filter(code => !code.is_main_code).length || 0}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Lista de códigos RUP */}
-            {projectRupCodes?.codes && projectRupCodes.codes.length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">
-                    Códigos Asignados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {projectRupCodes.codes.map((rupCode, index) => (
-                      <div
-                        key={rupCode.id || index}
-                        className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-5 bg-neutral-50 dark:bg-neutral-800/50 hover:shadow-md transition-shadow"
-                      >
-                        {/* Header del código */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Target className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-lg font-bold text-primary">
-                                  {rupCode.code}
-                                </span>
-                                {rupCode.is_main_code && (
-                                  <Badge variant="success" className="text-xs">
-                                    <Star className="h-3 w-3 mr-1" />
-                                    Principal
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                                {rupCode.product_name || rupCode.description}
-                              </p>
-                            </div>
-                          </div>
-                          {rupCode.participation_percentage && (
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-success">
-                                {rupCode.participation_percentage}%
-                              </p>
-                              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                Participación
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Jerarquía RUP */}
-                        <div className="grid grid-cols-4 gap-4 bg-white dark:bg-neutral-900 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700">
-                          <div>
-                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
-                              Segmento
-                            </p>
-                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                              {rupCode.segment_code}
-                            </p>
-                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
-                              {rupCode.segment_name}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
-                              Familia
-                            </p>
-                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                              {rupCode.family_code}
-                            </p>
-                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
-                              {rupCode.family_name}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
-                              Clase
-                            </p>
-                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                              {rupCode.class_code}
-                            </p>
-                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
-                              {rupCode.class_name}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
-                              Producto
-                            </p>
-                            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                              {rupCode.product_code || rupCode.code}
-                            </p>
-                            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
-                              {rupCode.product_name || rupCode.description}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Información adicional */}
-                        {(rupCode.observations || rupCode.assignment_date) && (
-                          <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                            <div className="grid grid-cols-2 gap-4">
-                              {rupCode.assignment_date && (
-                                <div>
-                                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
-                                    Fecha de Asignación
-                                  </p>
-                                  <p className="text-sm font-medium flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-neutral-400" />
-                                    {formatDate(rupCode.assignment_date)}
-                                  </p>
-                                </div>
-                              )}
-                              {rupCode.observations && (
-                                <div className="col-span-2">
-                                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
-                                    Observaciones
-                                  </p>
-                                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                                    {rupCode.observations}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Observaciones Generales */}
-                  {projectRupCodes?.general_observations && (
-                    <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
-                      <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3 flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Observaciones Generales
-                      </h3>
-                      <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
-                        <p className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
-                          {projectRupCodes.general_observations}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="py-16">
-                  <div className="text-center">
-                    <div className="mx-auto h-16 w-16 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
-                      <Target className="h-8 w-8 text-neutral-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
-                      No hay códigos RUP asignados
-                    </h3>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
-                      Este proyecto aún no tiene códigos RUP asociados. Los códigos RUP son necesarios para la clasificación oficial del proyecto.
-                    </p>
-                    <Button onClick={() => navigate(`/projects/edit/${id}`)}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar Proyecto para Asignar Códigos
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
         )}
       </div>

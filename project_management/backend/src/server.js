@@ -2408,12 +2408,18 @@ app.get('/api/projects/:projectId/modifications', async (req, res) => {
         ms.actual_restart_date as restart_date,
         ms.contractor_justification as suspension_reason,
         ms.supervisor_justification as suspension_observations,
-        ms.supervisor_justification as restart_observations,
-        ms.suspension_status,
         ms.entity_supervisor_name,
         ms.entity_supervisor_id,
         ms.entity_supervisor_signature_date,
+        ms.suspension_status,
         ms.restart_modification_id,
+        -- Calcular días de suspensión
+        (ms.suspension_end_date - ms.suspension_start_date) as suspension_days,
+        (CASE 
+          WHEN ms.actual_restart_date IS NOT NULL 
+          THEN (ms.actual_restart_date - ms.suspension_start_date)
+          ELSE NULL 
+        END) as actual_suspension_days,
         
         ml.liquidation_id,
         ml.liquidation_type,
@@ -2739,34 +2745,52 @@ app.post('/api/projects/:projectId/modifications', async (req, res) => {
       console.log(`💰 Valor del proyecto actualizado: ${newTotalValue}`);
     }
     
-    // 11. Si es SUSPENSION, crear registro en modification_suspensions
+// 11. Si es SUSPENSION, crear registro en modification_suspensions
 if (modification_type === 'SUSPENSION') {
   const {
     suspension_start_date,
     suspension_reason,
     suspension_days,
     expected_restart_date,
-    suspension_observations
+    suspension_observations,
+    entity_supervisor_name,
+    entity_supervisor_id
   } = req.body;
   
-  if (suspension_start_date && suspension_reason) {
+  if (suspension_start_date && suspension_reason && expected_restart_date && suspension_observations) {
+    // Calcular suspension_end_date basado en suspension_days
+    let suspension_end_date;
+    if (suspension_days && suspension_days > 0) {
+      const startDate = new Date(suspension_start_date);
+      startDate.setDate(startDate.getDate() + parseInt(suspension_days));
+      suspension_end_date = startDate.toISOString().split('T')[0];
+    } else {
+      // Si no hay días, usar la fecha de reinicio esperada como end_date
+      suspension_end_date = expected_restart_date;
+    }
+    
     await client.query(
       `INSERT INTO modification_suspensions (
         modification_id,
         suspension_start_date,
-        suspension_reason,
-        suspension_days,
-        expected_restart_date,
-        suspension_observations,
+        suspension_end_date,
+        planned_restart_date,
+        contractor_justification,
+        supervisor_justification,
+        entity_supervisor_name,
+        entity_supervisor_id,
+        suspension_status,
         is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, true)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', true)`,
       [
         insertResult.rows[0].id,
         suspension_start_date,
-        suspension_reason,
-        suspension_days || null,
-        expected_restart_date || null,
-        suspension_observations || null
+        suspension_end_date,
+        expected_restart_date,
+        suspension_reason, // contractor_justification
+        suspension_observations, // supervisor_justification
+        entity_supervisor_name || null,
+        entity_supervisor_id || null
       ]
     );
     
@@ -2774,100 +2798,156 @@ if (modification_type === 'SUSPENSION') {
   }
 }
 
-    // 12. Si es RESTART, actualizar la suspensión activa más reciente
-    if (modification_type === 'RESTART') {
-      const {
-        restart_date,
-        actual_suspension_days,
-        restart_observations
-      } = req.body;
+// 12. Si es RESTART, actualizar la suspensión activa más reciente
+if (modification_type === 'RESTART') {
+  const {
+    restart_date,
+    actual_suspension_days,
+    restart_observations,
+    entity_supervisor_name,
+    entity_supervisor_id,
+    entity_supervisor_signature_date
+  } = req.body;
+  
+  if (restart_date) {
+    // Buscar la suspensión activa más reciente sin reinicio
+    const activeSuspensionResult = await client.query(
+      `SELECT ms.suspension_id
+      FROM modification_suspensions ms
+      INNER JOIN project_modifications pm ON ms.modification_id = pm.modification_id
+      WHERE pm.project_id = $1 
+        AND ms.is_active = true 
+        AND ms.actual_restart_date IS NULL
+        AND ms.suspension_status = 'ACTIVE'
+      ORDER BY ms.suspension_start_date DESC
+      LIMIT 1`,
+      [projectId]
+    );
+    
+    if (activeSuspensionResult.rows.length > 0) {
+      const suspensionId = activeSuspensionResult.rows[0].suspension_id;
       
-      if (restart_date) {
-        // Buscar la suspensión activa más reciente sin reinicio
-        const activeSuspensionResult = await client.query(
-          `SELECT ms.suspension_id
-          FROM modification_suspensions ms
-          INNER JOIN project_modifications pm ON ms.modification_id = pm.modification_id
-          WHERE pm.project_id = $1 
-            AND ms.is_active = true 
-            AND ms.restart_date IS NULL
-          ORDER BY ms.suspension_start_date DESC
-          LIMIT 1`,
-          [projectId]
-        );
-        
-        if (activeSuspensionResult.rows.length > 0) {
-          const suspensionId = activeSuspensionResult.rows[0].suspension_id;
-          
-          await client.query(
-            `UPDATE modification_suspensions 
-            SET restart_date = $1,
-                actual_suspension_days = $2,
-                restart_observations = $3,
-                restart_modification_id = $4
-            WHERE suspension_id = $5`,
-            [
-              restart_date,
-              actual_suspension_days || null,
-              restart_observations || null,
-              insertResult.rows[0].id,
-              suspensionId
-            ]
-          );
-          
-          console.log(`▶️ Reinicio registrado para suspensión #${suspensionId}`);
-        } else {
-          console.warn('⚠️ No se encontró suspensión activa para registrar reinicio');
-        }
-      }
+      // Actualizar con campos de la BD real
+      await client.query(
+        `UPDATE modification_suspensions 
+        SET actual_restart_date = $1,
+            entity_supervisor_name = $2,
+            entity_supervisor_id = $3,
+            entity_supervisor_signature_date = $4,
+            suspension_status = 'RESTARTED',
+            restart_modification_id = $5
+        WHERE suspension_id = $6`,
+        [
+          restart_date,
+          entity_supervisor_name || null,
+          entity_supervisor_id || null,
+          entity_supervisor_signature_date || restart_date,
+          insertResult.rows[0].id,
+          suspensionId
+        ]
+      );
+      
+      console.log(`▶️ Reinicio registrado para suspensión #${suspensionId}`);
+    } else {
+      console.warn('⚠️ No se encontró suspensión activa para registrar reinicio');
     }
+  }
+}
 
-    // 13. Si es LIQUIDATION, crear registro en modification_liquidations
-    if (modification_type === 'LIQUIDATION') {
-      const {
-        liquidation_date,
-        final_value,
-        liquidation_act_number,
-        liquidation_act_date,
-        penalties_amount,
-        final_balance,
-        has_pending_obligations,
-        pending_obligations_description,
-        liquidation_observations
-      } = req.body;
+// 13. Si es LIQUIDATION, crear registro en modification_liquidations
+if (modification_type === 'LIQUIDATION') {
+  const {
+    liquidation_date,
+    liquidation_type,
+    resolution_number,
+    resolution_date,
+    unilateral_cause,
+    cause_analysis,
+    initial_contract_value,
+    final_value_with_additions,
+    execution_percentage,
+    executed_value,
+    pending_payment_value,
+    value_to_release,
+    cdp,
+    cdp_value,
+    rp,
+    rp_value,
+    suspensions_summary,
+    extensions_summary,
+    additions_summary,
+    liquidation_signature_date,
+    supervisor_liquidation_request
+  } = req.body;
+  
+  // Validar campos requeridos
+  if (!liquidation_date || !liquidation_type || !initial_contract_value || 
+      !final_value_with_additions || execution_percentage === undefined || 
+      !executed_value || !supervisor_liquidation_request) {
+    throw new Error('Campos requeridos para liquidación: liquidation_date, liquidation_type, initial_contract_value, final_value_with_additions, execution_percentage, executed_value, supervisor_liquidation_request');
+  }
+  
+  // Validar liquidación UNILATERAL
+  if (liquidation_type === 'UNILATERAL' && (!resolution_number || !unilateral_cause)) {
+    throw new Error('Liquidación UNILATERAL requiere resolution_number y unilateral_cause');
+  }
+  
+  await client.query(
+    `INSERT INTO modification_liquidations (
+      modification_id,
+      liquidation_type,
+      resolution_number,
+      resolution_date,
+      unilateral_cause,
+      cause_analysis,
+      initial_contract_value,
+      final_value_with_additions,
+      execution_percentage,
+      executed_value,
+      pending_payment_value,
+      value_to_release,
+      cdp,
+      cdp_value,
+      rp,
+      rp_value,
+      suspensions_summary,
+      extensions_summary,
+      additions_summary,
+      liquidation_date,
+      liquidation_signature_date,
+      supervisor_liquidation_request,
+      is_active
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, true)`,
+    [
+      insertResult.rows[0].id,
+      liquidation_type,
+      resolution_number || null,
+      resolution_date || null,
+      unilateral_cause || null,
+      cause_analysis || null,
+      parseFloat(initial_contract_value),
+      parseFloat(final_value_with_additions),
+      parseFloat(execution_percentage),
+      parseFloat(executed_value),
+      pending_payment_value ? parseFloat(pending_payment_value) : null,
+      value_to_release ? parseFloat(value_to_release) : null,
+      cdp || null,
+      cdp_value ? parseFloat(cdp_value) : null,
+      rp || null,
+      rp_value ? parseFloat(rp_value) : null,
+      suspensions_summary || null,
+      extensions_summary || null,
+      additions_summary || null,
+      liquidation_date,
+      liquidation_signature_date || null,
+      supervisor_liquidation_request
+    ]
+  );
       
-      if (liquidation_date && final_value) {
-        await client.query(
-          `INSERT INTO modification_liquidations (
-            modification_id,
-            liquidation_date,
-            final_value,
-            liquidation_act_number,
-            liquidation_act_date,
-            penalties_amount,
-            final_balance,
-            has_pending_obligations,
-            pending_obligations_description,
-            liquidation_observations,
-            is_active
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)`,
-          [
-            insertResult.rows[0].id,
-            liquidation_date,
-            parseFloat(final_value),
-            liquidation_act_number || null,
-            liquidation_act_date || null,
-            penalties_amount ? parseFloat(penalties_amount) : null,
-            final_balance ? parseFloat(final_balance) : null,
-            has_pending_obligations || false,
-            pending_obligations_description || null,
-            liquidation_observations || null
-          ]
-        );
-        
-        console.log(`📋 Liquidación creada para modificación #${modificationNumber}`);
-      }
-    }
+      console.log(`📋 Liquidación creada para modificación #${modificationNumber}`);
+    
+}
+
     // 14. Si es MODIFICATION (cambio de cláusulas), crear registro en modification_clause_changes
     if (modification_type === 'MODIFICATION') {
       const {
@@ -2911,58 +2991,97 @@ if (modification_type === 'SUSPENSION') {
         console.log(`📝 Cambio de cláusula creado para modificación #${modificationNumber}`);
       }
     }
-    // 15. Si es ASSIGNMENT (cesión), crear registro en modification_assignments
-    if (modification_type === 'ASSIGNMENT') {
-      const {
-        assignment_type,
-        assignor_name,
-        assignor_id,
-        assignee_name,
-        assignee_id,
-        assignee_id_type,
-        assignment_date,
-        assignment_value,
-        assignment_percentage,
-        related_derived_project_id,
-        assignment_observations
-      } = req.body;
-      
-      if (assignee_name && assignee_id) {
-        await client.query(
-          `INSERT INTO modification_assignments (
-            modification_id,
-            assignment_type,
-            assignor_name,
-            assignor_id,
-            assignee_name,
-            assignee_id,
-            assignee_id_type,
-            assignment_date,
-            assignment_value,
-            assignment_percentage,
-            related_derived_project_id,
-            assignment_observations,
-            is_active
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)`,
-          [
-            insertResult.rows[0].id,
-            assignment_type || 'TOTAL',
-            assignor_name || null,
-            assignor_id || null,
-            assignee_name,
-            assignee_id,
-            assignee_id_type || 'CC',
-            assignment_date || null,
-            assignment_value ? parseFloat(assignment_value) : null,
-            assignment_percentage ? parseFloat(assignment_percentage) : null,
-            related_derived_project_id || null,
-            assignment_observations || null
-          ]
-        );
-        
-        console.log(`🔄 Cesión creada para modificación #${modificationNumber}`);
-      }
-    }
+// 15. Si es ASSIGNMENT (cesión), crear registro en modification_assignments
+if (modification_type === 'ASSIGNMENT') {
+  const {
+    assignment_type,
+    assignor_name,
+    assignor_id,
+    assignor_id_type,
+    assignee_name,
+    assignee_id,
+    assignee_id_type,
+    supervisor_name,
+    supervisor_id,
+    assignment_date,
+    assignment_signature_date,
+    value_paid_to_assignor,
+    value_pending_to_assignor,
+    value_to_assign,
+    handover_report_path,
+    technical_report_path,
+    account_statement_path,
+    cdp,
+    rp,
+    guarantee_modification_request,
+    related_derived_project_id
+  } = req.body;
+  
+  // Validar campos requeridos
+  if (!assignment_type || !assignor_name || !assignor_id || 
+      !assignee_name || !assignee_id || !assignment_date || !value_to_assign) {
+    throw new Error('Campos requeridos para cesión: assignment_type, assignor_name, assignor_id, assignee_name, assignee_id, assignment_date, value_to_assign');
+  }
+  
+  // Validar tipo de cesión
+  if (assignment_type !== 'UNIVERSITY_AS_ASSIGNEE' && assignment_type !== 'UNIVERSITY_AS_ASSIGNOR') {
+    throw new Error('assignment_type debe ser UNIVERSITY_AS_ASSIGNEE o UNIVERSITY_AS_ASSIGNOR');
+  }
+  
+  await client.query(
+    `INSERT INTO modification_assignments (
+      modification_id,
+      assignment_type,
+      assignor_name,
+      assignor_id,
+      assignor_id_type,
+      assignee_name,
+      assignee_id,
+      assignee_id_type,
+      supervisor_name,
+      supervisor_id,
+      assignment_date,
+      assignment_signature_date,
+      value_paid_to_assignor,
+      value_pending_to_assignor,
+      value_to_assign,
+      handover_report_path,
+      technical_report_path,
+      account_statement_path,
+      cdp,
+      rp,
+      guarantee_modification_request,
+      related_derived_project_id,
+      is_active
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, true)`,
+    [
+      insertResult.rows[0].id,
+      assignment_type,
+      assignor_name,
+      assignor_id,
+      assignor_id_type || null,
+      assignee_name,
+      assignee_id,
+      assignee_id_type || null,
+      supervisor_name || null,
+      supervisor_id || null,
+      assignment_date,
+      assignment_signature_date || null,
+      value_paid_to_assignor ? parseFloat(value_paid_to_assignor) : null,
+      value_pending_to_assignor ? parseFloat(value_pending_to_assignor) : null,
+      parseFloat(value_to_assign),
+      handover_report_path || null,
+      technical_report_path || null,
+      account_statement_path || null,
+      cdp || null,
+      rp || null,
+      guarantee_modification_request || null,
+      related_derived_project_id || null
+    ]
+  );
+    console.log(`🔄 Cesión creada para modificación #${modificationNumber}`);
+  
+}
 
     await client.query('COMMIT');
 
@@ -3002,13 +3121,15 @@ app.post('/api/projects/:projectId/modifications/:modificationId/suspension', as
       suspension_reason,
       suspension_days,
       expected_restart_date,
-      suspension_observations
+      suspension_observations,
+      entity_supervisor_name,
+      entity_supervisor_id
     } = req.body;
     
-    // Validar campos requeridos
-    if (!suspension_start_date || !suspension_reason) {
+    // Validar campos requeridos según la BD
+    if (!suspension_start_date || !suspension_reason || !expected_restart_date || !suspension_observations) {
       return res.status(400).json({ 
-        error: 'La fecha de inicio y el motivo de suspensión son obligatorios' 
+        error: 'La fecha de inicio, motivo, fecha esperada de reinicio y observaciones son obligatorias' 
       });
     }
     
@@ -3033,34 +3154,52 @@ app.post('/api/projects/:projectId/modifications/:modificationId/suspension', as
       });
     }
     
-    // Insertar suspensión
+    // Calcular suspension_end_date
+    let suspension_end_date;
+    if (suspension_days && suspension_days > 0) {
+      const startDate = new Date(suspension_start_date);
+      startDate.setDate(startDate.getDate() + parseInt(suspension_days));
+      suspension_end_date = startDate.toISOString().split('T')[0];
+    } else {
+      suspension_end_date = expected_restart_date;
+    }
+    
+    // Insertar suspensión con campos correctos de la BD
     const insertResult = await client.query(
       `INSERT INTO modification_suspensions (
         modification_id,
         suspension_start_date,
-        suspension_reason,
-        suspension_days,
-        expected_restart_date,
-        suspension_observations,
+        suspension_end_date,
+        planned_restart_date,
+        contractor_justification,
+        supervisor_justification,
+        entity_supervisor_name,
+        entity_supervisor_id,
+        suspension_status,
         is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, true)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', true)
       RETURNING 
         suspension_id,
         modification_id,
         suspension_start_date,
-        suspension_reason,
-        suspension_days,
-        expected_restart_date,
-        restart_date,
-        suspension_observations,
+        suspension_end_date,
+        planned_restart_date,
+        actual_restart_date,
+        contractor_justification as suspension_reason,
+        supervisor_justification as suspension_observations,
+        entity_supervisor_name,
+        entity_supervisor_id,
+        suspension_status,
         created_at`,
       [
         modificationId,
         suspension_start_date,
+        suspension_end_date,
+        expected_restart_date,
         suspension_reason,
-        suspension_days || null,
-        expected_restart_date || null,
-        suspension_observations || null
+        suspension_observations,
+        entity_supervisor_name || null,
+        entity_supervisor_id || null
       ]
     );
     
@@ -3092,9 +3231,11 @@ app.put('/api/suspensions/:suspensionId/restart', async (req, res) => {
     const { suspensionId } = req.params;
     const {
       restart_date,
-      actual_suspension_days,
       restart_observations,
-      restart_modification_id
+      restart_modification_id,
+      entity_supervisor_name,
+      entity_supervisor_id,
+      entity_supervisor_signature_date
     } = req.body;
     
     // Validar campo requerido
@@ -3108,8 +3249,8 @@ app.put('/api/suspensions/:suspensionId/restart', async (req, res) => {
     
     // Verificar que la suspensión existe y no tiene reinicio
     const suspResult = await client.query(
-      `SELECT suspension_id, restart_date 
-       FROM modification_suspensions 
+      `SELECT suspension_id, actual_restart_date, suspension_status 
+       FROM modification_suspensions
        WHERE suspension_id = $1 AND is_active = true`,
       [suspensionId]
     );
@@ -3119,36 +3260,43 @@ app.put('/api/suspensions/:suspensionId/restart', async (req, res) => {
       return res.status(404).json({ error: 'Suspensión no encontrada' });
     }
     
-    if (suspResult.rows[0].restart_date) {
+    if (suspResult.rows[0].actual_restart_date) {
       await client.query('ROLLBACK');
       return res.status(400).json({ 
         error: 'Esta suspensión ya tiene un reinicio registrado' 
       });
     }
     
-    // Actualizar suspensión con datos de reinicio
+    // Actualizar suspensión con datos de reinicio según estructura BD
     const updateResult = await client.query(
       `UPDATE modification_suspensions 
-       SET restart_date = $1,
-           actual_suspension_days = $2,
-           restart_observations = $3,
-           restart_modification_id = $4
-       WHERE suspension_id = $5
+       SET actual_restart_date = $1,
+           entity_supervisor_name = $2,
+           entity_supervisor_id = $3,
+           entity_supervisor_signature_date = $4,
+           suspension_status = 'RESTARTED',
+           restart_modification_id = $5
+       WHERE suspension_id = $6
        RETURNING 
          suspension_id,
          modification_id,
          suspension_start_date,
-         suspension_reason,
-         suspension_days,
-         expected_restart_date,
-         restart_date,
-         actual_suspension_days,
-         restart_observations,
+         suspension_end_date,
+         planned_restart_date,
+         actual_restart_date as restart_date,
+         contractor_justification as suspension_reason,
+         supervisor_justification as suspension_observations,
+         entity_supervisor_name,
+         entity_supervisor_id,
+         entity_supervisor_signature_date,
+         suspension_status,
+         restart_modification_id,
          created_at`,
       [
         restart_date,
-        actual_suspension_days || null,
-        restart_observations || null,
+        entity_supervisor_name || null,
+        entity_supervisor_id || null,
+        entity_supervisor_signature_date || restart_date,
         restart_modification_id || null,
         suspensionId
       ]
@@ -3185,16 +3333,25 @@ app.get('/api/modifications/:modificationId/suspensions', async (req, res) => {
         suspension_id,
         modification_id,
         suspension_start_date,
-        suspension_reason,
-        suspension_days,
-        expected_restart_date,
-        restart_date,
-        actual_suspension_days,
-        restart_observations,
+        suspension_end_date,
+        planned_restart_date as expected_restart_date,
+        actual_restart_date as restart_date,
+        contractor_justification as suspension_reason,
+        supervisor_justification as suspension_observations,
+        entity_supervisor_name,
+        entity_supervisor_id,
+        entity_supervisor_signature_date,
+        suspension_status,
         restart_modification_id,
-        suspension_observations,
         created_at,
-        is_active
+        is_active,
+        -- Calcular días de suspensión
+        (suspension_end_date - suspension_start_date) as suspension_days,
+        (CASE 
+          WHEN actual_restart_date IS NOT NULL 
+          THEN (actual_restart_date - suspension_start_date)
+          ELSE NULL 
+        END) as actual_suspension_days
       FROM modification_suspensions
       WHERE modification_id = $1 AND is_active = true
       ORDER BY suspension_start_date DESC`,
@@ -3221,17 +3378,30 @@ app.get('/api/projects/:projectId/suspensions', async (req, res) => {
         ms.modification_id,
         pm.modification_number,
         ms.suspension_start_date,
-        ms.suspension_reason,
-        ms.suspension_days,
-        ms.expected_restart_date,
-        ms.restart_date,
-        ms.actual_suspension_days,
-        ms.restart_observations,
-        ms.suspension_observations,
+        ms.suspension_end_date,
+        ms.planned_restart_date as expected_restart_date,
+        ms.actual_restart_date as restart_date,
+        ms.contractor_justification as suspension_reason,
+        ms.supervisor_justification as suspension_observations,
+        ms.entity_supervisor_name,
+        ms.entity_supervisor_id,
+        ms.entity_supervisor_signature_date,
+        ms.suspension_status,
+        ms.restart_modification_id,
         ms.created_at,
+        -- Calcular días
+        (ms.suspension_end_date - ms.suspension_start_date) as suspension_days,
+        (CASE 
+          WHEN ms.actual_restart_date IS NOT NULL 
+          THEN (ms.actual_restart_date - ms.suspension_start_date)
+          ELSE NULL 
+        END) as actual_suspension_days,
+        -- Status legible
         CASE 
-          WHEN ms.restart_date IS NULL THEN 'ACTIVA'
-          ELSE 'REINICIADA'
+          WHEN ms.suspension_status = 'ACTIVE' THEN 'ACTIVA'
+          WHEN ms.suspension_status = 'RESTARTED' THEN 'REINICIADA'
+          WHEN ms.suspension_status = 'CANCELLED' THEN 'CANCELADA'
+          ELSE ms.suspension_status
         END as status
       FROM modification_suspensions ms
       INNER JOIN project_modifications pm ON ms.modification_id = pm.modification_id
@@ -3260,20 +3430,41 @@ app.post('/api/projects/:projectId/modifications/:modificationId/liquidation', a
     const { projectId, modificationId } = req.params;
     const {
       liquidation_date,
-      final_value,
-      liquidation_act_number,
-      liquidation_act_date,
-      penalties_amount,
-      final_balance,
-      has_pending_obligations,
-      pending_obligations_description,
-      liquidation_observations
+      liquidation_type,
+      resolution_number,
+      resolution_date,
+      unilateral_cause,
+      cause_analysis,
+      initial_contract_value,
+      final_value_with_additions,
+      execution_percentage,
+      executed_value,
+      pending_payment_value,
+      value_to_release,
+      cdp,
+      cdp_value,
+      rp,
+      rp_value,
+      suspensions_summary,
+      extensions_summary,
+      additions_summary,
+      liquidation_signature_date,
+      supervisor_liquidation_request
     } = req.body;
     
     // Validar campos requeridos
-    if (!liquidation_date || !final_value) {
+    if (!liquidation_date || !liquidation_type || !initial_contract_value || 
+        !final_value_with_additions || execution_percentage === undefined || 
+        !executed_value || !supervisor_liquidation_request) {
       return res.status(400).json({ 
-        error: 'La fecha de liquidación y el valor final son obligatorios' 
+        error: 'Campos requeridos: liquidation_date, liquidation_type, initial_contract_value, final_value_with_additions, execution_percentage, executed_value, supervisor_liquidation_request' 
+      });
+    }
+    
+    // Validar liquidación UNILATERAL
+    if (liquidation_type === 'UNILATERAL' && (!resolution_number || !unilateral_cause)) {
+      return res.status(400).json({ 
+        error: 'Liquidación UNILATERAL requiere resolution_number y unilateral_cause' 
       });
     }
     
@@ -3302,41 +3493,77 @@ app.post('/api/projects/:projectId/modifications/:modificationId/liquidation', a
     const insertResult = await client.query(
       `INSERT INTO modification_liquidations (
         modification_id,
+        liquidation_type,
+        resolution_number,
+        resolution_date,
+        unilateral_cause,
+        cause_analysis,
+        initial_contract_value,
+        final_value_with_additions,
+        execution_percentage,
+        executed_value,
+        pending_payment_value,
+        value_to_release,
+        cdp,
+        cdp_value,
+        rp,
+        rp_value,
+        suspensions_summary,
+        extensions_summary,
+        additions_summary,
         liquidation_date,
-        final_value,
-        liquidation_act_number,
-        liquidation_act_date,
-        penalties_amount,
-        final_balance,
-        has_pending_obligations,
-        pending_obligations_description,
-        liquidation_observations,
+        liquidation_signature_date,
+        supervisor_liquidation_request,
         is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, true)
       RETURNING 
         liquidation_id,
         modification_id,
+        liquidation_type,
+        resolution_number,
+        resolution_date,
+        unilateral_cause,
+        cause_analysis,
+        initial_contract_value,
+        final_value_with_additions,
+        execution_percentage,
+        executed_value,
+        pending_payment_value,
+        value_to_release,
+        cdp,
+        cdp_value,
+        rp,
+        rp_value,
+        suspensions_summary,
+        extensions_summary,
+        additions_summary,
         liquidation_date,
-        final_value,
-        liquidation_act_number,
-        liquidation_act_date,
-        penalties_amount,
-        final_balance,
-        has_pending_obligations,
-        pending_obligations_description,
-        liquidation_observations,
+        liquidation_signature_date,
+        supervisor_liquidation_request,
         created_at`,
       [
         modificationId,
+        liquidation_type,
+        resolution_number || null,
+        resolution_date || null,
+        unilateral_cause || null,
+        cause_analysis || null,
+        parseFloat(initial_contract_value),
+        parseFloat(final_value_with_additions),
+        parseFloat(execution_percentage),
+        parseFloat(executed_value),
+        pending_payment_value ? parseFloat(pending_payment_value) : null,
+        value_to_release ? parseFloat(value_to_release) : null,
+        cdp || null,
+        cdp_value ? parseFloat(cdp_value) : null,
+        rp || null,
+        rp_value ? parseFloat(rp_value) : null,
+        suspensions_summary || null,
+        extensions_summary || null,
+        additions_summary || null,
         liquidation_date,
-        parseFloat(final_value),
-        liquidation_act_number || null,
-        liquidation_act_date || null,
-        penalties_amount ? parseFloat(penalties_amount) : null,
-        final_balance ? parseFloat(final_balance) : null,
-        has_pending_obligations || false,
-        pending_obligations_description || null,
-        liquidation_observations || null
+        liquidation_signature_date || null,
+        supervisor_liquidation_request
       ]
     );
     
@@ -3370,15 +3597,27 @@ app.get('/api/modifications/:modificationId/liquidations', async (req, res) => {
       `SELECT 
         liquidation_id,
         modification_id,
+        liquidation_type,
+        resolution_number as liquidation_act_number,
+        resolution_date as liquidation_act_date,
+        unilateral_cause,
+        cause_analysis,
+        initial_contract_value,
+        final_value_with_additions as final_value,
+        execution_percentage,
+        executed_value,
+        pending_payment_value,
+        value_to_release,
+        cdp,
+        cdp_value,
+        rp,
+        rp_value,
+        suspensions_summary,
+        extensions_summary,
+        additions_summary,
         liquidation_date,
-        final_value,
-        liquidation_act_number,
-        liquidation_act_date,
-        penalties_amount,
-        final_balance,
-        has_pending_obligations,
-        pending_obligations_description,
-        liquidation_observations,
+        liquidation_signature_date,
+        supervisor_liquidation_request as liquidation_observations,
         created_at,
         is_active
       FROM modification_liquidations
@@ -3406,15 +3645,27 @@ app.get('/api/projects/:projectId/liquidations', async (req, res) => {
         ml.liquidation_id,
         ml.modification_id,
         pm.modification_number,
+        ml.liquidation_type,
+        ml.resolution_number as liquidation_act_number,
+        ml.resolution_date as liquidation_act_date,
+        ml.unilateral_cause,
+        ml.cause_analysis,
+        ml.initial_contract_value,
+        ml.final_value_with_additions as final_value,
+        ml.execution_percentage,
+        ml.executed_value,
+        ml.pending_payment_value,
+        ml.value_to_release,
+        ml.cdp,
+        ml.cdp_value,
+        ml.rp,
+        ml.rp_value,
+        ml.suspensions_summary,
+        ml.extensions_summary,
+        ml.additions_summary,
         ml.liquidation_date,
-        ml.final_value,
-        ml.liquidation_act_number,
-        ml.liquidation_act_date,
-        ml.penalties_amount,
-        ml.final_balance,
-        ml.has_pending_obligations,
-        ml.pending_obligations_description,
-        ml.liquidation_observations,
+        ml.liquidation_signature_date,
+        ml.supervisor_liquidation_request as liquidation_observations,
         ml.created_at
       FROM modification_liquidations ml
       INNER JOIN project_modifications pm ON ml.modification_id = pm.modification_id
@@ -3615,20 +3866,38 @@ app.post('/api/projects/:projectId/modifications/:modificationId/assignment', as
       assignment_type,
       assignor_name,
       assignor_id,
+      assignor_id_type,
       assignee_name,
       assignee_id,
       assignee_id_type,
+      supervisor_name,
+      supervisor_id,
       assignment_date,
-      assignment_value,
-      assignment_percentage,
-      related_derived_project_id,
-      assignment_observations
+      assignment_signature_date,
+      value_paid_to_assignor,
+      value_pending_to_assignor,
+      value_to_assign,
+      handover_report_path,
+      technical_report_path,
+      account_statement_path,
+      cdp,
+      rp,
+      guarantee_modification_request,
+      related_derived_project_id
     } = req.body;
     
     // Validar campos requeridos
-    if (!assignment_type || !assignee_name || !assignee_id) {
+    if (!assignment_type || !assignor_name || !assignor_id || 
+        !assignee_name || !assignee_id || !assignment_date || !value_to_assign) {
       return res.status(400).json({ 
-        error: 'El tipo de cesión, nombre y cédula del cesionario son obligatorios' 
+        error: 'Campos requeridos: assignment_type, assignor_name, assignor_id, assignee_name, assignee_id, assignment_date, value_to_assign' 
+      });
+    }
+    
+    // Validar tipo de cesión
+    if (assignment_type !== 'UNIVERSITY_AS_ASSIGNEE' && assignment_type !== 'UNIVERSITY_AS_ASSIGNOR') {
+      return res.status(400).json({ 
+        error: 'assignment_type debe ser UNIVERSITY_AS_ASSIGNEE o UNIVERSITY_AS_ASSIGNOR' 
       });
     }
     
@@ -3653,44 +3922,74 @@ app.post('/api/projects/:projectId/modifications/:modificationId/assignment', as
         assignment_type,
         assignor_name,
         assignor_id,
+        assignor_id_type,
         assignee_name,
         assignee_id,
         assignee_id_type,
+        supervisor_name,
+        supervisor_id,
         assignment_date,
-        assignment_value,
-        assignment_percentage,
+        assignment_signature_date,
+        value_paid_to_assignor,
+        value_pending_to_assignor,
+        value_to_assign,
+        handover_report_path,
+        technical_report_path,
+        account_statement_path,
+        cdp,
+        rp,
+        guarantee_modification_request,
         related_derived_project_id,
-        assignment_observations,
         is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, true)
       RETURNING 
         assignment_id,
         modification_id,
         assignment_type,
         assignor_name,
         assignor_id,
+        assignor_id_type,
         assignee_name,
         assignee_id,
         assignee_id_type,
+        supervisor_name,
+        supervisor_id,
         assignment_date,
-        assignment_value,
-        assignment_percentage,
+        assignment_signature_date,
+        value_paid_to_assignor,
+        value_pending_to_assignor,
+        value_to_assign,
+        handover_report_path,
+        technical_report_path,
+        account_statement_path,
+        cdp,
+        rp,
+        guarantee_modification_request,
         related_derived_project_id,
-        assignment_observations,
         created_at`,
       [
         modificationId,
         assignment_type,
-        assignor_name || null,
-        assignor_id || null,
+        assignor_name,
+        assignor_id,
+        assignor_id_type || null,
         assignee_name,
         assignee_id,
-        assignee_id_type || 'CC',
-        assignment_date || null,
-        assignment_value ? parseFloat(assignment_value) : null,
-        assignment_percentage ? parseFloat(assignment_percentage) : null,
-        related_derived_project_id || null,
-        assignment_observations || null
+        assignee_id_type || null,
+        supervisor_name || null,
+        supervisor_id || null,
+        assignment_date,
+        assignment_signature_date || null,
+        value_paid_to_assignor ? parseFloat(value_paid_to_assignor) : null,
+        value_pending_to_assignor ? parseFloat(value_pending_to_assignor) : null,
+        parseFloat(value_to_assign),
+        handover_report_path || null,
+        technical_report_path || null,
+        account_statement_path || null,
+        cdp || null,
+        rp || null,
+        guarantee_modification_request || null,
+        related_derived_project_id || null
       ]
     );
     
@@ -3727,14 +4026,24 @@ app.get('/api/modifications/:modificationId/assignments', async (req, res) => {
         assignment_type,
         assignor_name,
         assignor_id,
+        assignor_id_type,
         assignee_name,
         assignee_id,
         assignee_id_type,
+        supervisor_name,
+        supervisor_id,
         assignment_date,
-        assignment_value,
-        assignment_percentage,
+        assignment_signature_date,
+        value_paid_to_assignor,
+        value_pending_to_assignor,
+        value_to_assign as assignment_value,
+        handover_report_path,
+        technical_report_path,
+        account_statement_path,
+        cdp,
+        rp,
+        guarantee_modification_request,
         related_derived_project_id,
-        assignment_observations,
         created_at,
         is_active
       FROM modification_assignments
@@ -3765,14 +4074,24 @@ app.get('/api/projects/:projectId/assignments', async (req, res) => {
         ma.assignment_type,
         ma.assignor_name,
         ma.assignor_id,
+        ma.assignor_id_type,
         ma.assignee_name,
         ma.assignee_id,
         ma.assignee_id_type,
+        ma.supervisor_name,
+        ma.supervisor_id,
         ma.assignment_date,
-        ma.assignment_value,
-        ma.assignment_percentage,
+        ma.assignment_signature_date,
+        ma.value_paid_to_assignor,
+        ma.value_pending_to_assignor,
+        ma.value_to_assign as assignment_value,
+        ma.handover_report_path,
+        ma.technical_report_path,
+        ma.account_statement_path,
+        ma.cdp,
+        ma.rp,
+        ma.guarantee_modification_request,
         ma.related_derived_project_id,
-        ma.assignment_observations,
         ma.created_at
       FROM modification_assignments ma
       INNER JOIN project_modifications pm ON ma.modification_id = pm.modification_id
