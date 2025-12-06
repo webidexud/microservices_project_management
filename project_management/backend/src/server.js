@@ -40,9 +40,11 @@ app.get('/api/connection-status', async (req, res) => {
 // ========== ENTIDADES ==========
 app.get('/api/entities', async (req, res) => {
   try {
+    const { active } = req.query;
     const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
+    
+    let query = `
+      SELECT 
         entity_id as id, 
         entity_name as name, 
         tax_id as nit, 
@@ -61,9 +63,15 @@ app.get('/api/entities', async (req, res) => {
         contact_phone as contact_phone_number,
         contact_email,
         is_active as active 
-      FROM entities 
-      ORDER BY entity_id`
-    );
+      FROM entities`;
+    
+    if (active !== 'false') {
+      query += ' WHERE is_active = true';
+    }
+    
+    query += ' ORDER BY entity_name ASC';
+    
+    const result = await client.query(query);
     client.release();
     res.json(result.rows);
   } catch (error) {
@@ -71,6 +79,7 @@ app.get('/api/entities', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 app.get('/api/entities/active', async (req, res) => {
   try {
@@ -303,9 +312,11 @@ app.patch('/api/entities/:id/toggle', async (req, res) => {
 // ========== DEPENDENCIAS ==========
 app.get('/api/dependencies', async (req, res) => {
   try {
+    const { active } = req.query;
     const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
+    
+    let query = `
+      SELECT 
         department_id as id, 
         department_name as name,
         website,
@@ -313,9 +324,15 @@ app.get('/api/dependencies', async (req, res) => {
         phone,
         email,
         is_active as active 
-      FROM executing_departments 
-      ORDER BY department_id`
-    );
+      FROM executing_departments`;
+    
+    if (active !== 'false') {
+      query += ' WHERE is_active = true';
+    }
+    
+    query += ' ORDER BY department_name ASC';
+    
+    const result = await client.query(query);
     client.release();
     res.json(result.rows);
   } catch (error) {
@@ -427,15 +444,23 @@ app.patch('/api/dependencies/:id/toggle', async (req, res) => {
 // ========== TIPOS DE PROYECTO ==========
 app.get('/api/project-types', async (req, res) => {
   try {
+    const { active } = req.query;
     const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
+    
+    let query = `
+      SELECT 
         project_type_id as id, 
-        type_name as name,
+        type_name as name, 
         is_active as active 
-      FROM project_types 
-      ORDER BY type_name ASC`
-    );
+      FROM project_types`;
+    
+    if (active !== 'false') {
+      query += ' WHERE is_active = true';
+    }
+    
+    query += ' ORDER BY type_name ASC';
+    
+    const result = await client.query(query);
     client.release();
     res.json(result.rows);
   } catch (error) {
@@ -543,15 +568,23 @@ app.patch('/api/project-types/:id/toggle', async (req, res) => {
 // ========== TIPOS DE FINANCIACIÓN ==========
 app.get('/api/financing-types', async (req, res) => {
   try {
+    const { active } = req.query;
     const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
+    
+    let query = `
+      SELECT 
         financing_type_id as id, 
         financing_name as name,
         is_active as active 
-      FROM financing_types 
-      ORDER BY financing_name ASC`
-    );
+      FROM financing_types`;
+    
+    if (active !== 'false') {
+      query += ' WHERE is_active = true';
+    }
+    
+    query += ' ORDER BY financing_name ASC';
+    
+    const result = await client.query(query);
     client.release();
     res.json(result.rows);
   } catch (error) {
@@ -660,16 +693,24 @@ app.patch('/api/financing-types/:id/toggle', async (req, res) => {
 // ========== MODALIDADES DE EJECUCIÓN ==========
 app.get('/api/execution-modalities', async (req, res) => {
   try {
+    const { active } = req.query;
     const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
+    
+    let query = `
+      SELECT 
         execution_modality_id as id, 
         modality_name as name, 
         modality_description as description, 
         is_active as active 
-      FROM execution_modalities 
-      ORDER BY modality_name ASC`
-    );
+      FROM execution_modalities`;
+    
+    if (active !== 'false') {
+      query += ' WHERE is_active = true';
+    }
+    
+    query += ' ORDER BY modality_name ASC';
+    
+    const result = await client.query(query);
     client.release();
     res.json(result.rows);
   } catch (error) {
@@ -778,18 +819,26 @@ app.patch('/api/execution-modalities/:id/toggle', async (req, res) => {
 // ========== ESTADOS DE PROYECTO ==========
 app.get('/api/project-states', async (req, res) => {
   try {
+    const { active } = req.query;
     const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
-        status_id as id, 
-        status_name as name, 
-        status_code as code, 
+    
+    let query = `
+      SELECT 
+        status_id as id,
+        status_name as name,
+        status_code as code,
         status_color as color,
         status_description as description,
-        is_active as active 
-      FROM project_statuses 
-      ORDER BY status_name ASC`
-    );
+        is_active as active
+      FROM project_statuses`;
+    
+    if (active !== 'false') {
+      query += ' WHERE is_active = true';
+    }
+    
+    query += ' ORDER BY status_name ASC';
+    
+    const result = await client.query(query);
     client.release();
     res.json(result.rows);
   } catch (error) {
@@ -902,15 +951,17 @@ app.patch('/api/project-states/:id/toggle', async (req, res) => {
 // ========== FUNCIONARIOS ORDENADORES ==========
 app.get('/api/officials', async (req, res) => {
   try {
+    const { active } = req.query;
     const client = await pool.connect();
-    const result = await client.query(
-      `SELECT 
+    
+    let query = `
+      SELECT 
         official_id as id, 
         first_name,
         second_name,
         first_surname,
         second_surname,
-        CONCAT(first_name, ' ', COALESCE(second_name, ''), ' ', first_surname, ' ', COALESCE(second_surname, '')) as name,
+        CONCAT(first_surname, ' ', COALESCE(second_surname || ' ', ''), first_name, ' ', COALESCE(second_name, '')) as name,
         identification_type,
         identification_number,
         appointment_resolution as position,
@@ -918,9 +969,15 @@ app.get('/api/officials', async (req, res) => {
         institutional_email as email,
         phone,
         is_active as active 
-      FROM ordering_officials 
-      ORDER BY first_name ASC, first_surname ASC`
-    );
+      FROM ordering_officials`;
+    
+    if (active !== 'false') {
+      query += ' WHERE is_active = true';
+    }
+    
+    query += ' ORDER BY first_surname ASC, first_name ASC';
+    
+    const result = await client.query(query);
     client.release();
     res.json(result.rows);
   } catch (error) {
@@ -939,7 +996,7 @@ app.get('/api/officials/active', async (req, res) => {
         second_name,
         first_surname,
         second_surname,
-        CONCAT(first_name, ' ', COALESCE(second_name, ''), ' ', first_surname, ' ', COALESCE(second_surname, '')) as name,
+        CONCAT(first_surname, ' ', COALESCE(second_surname || ' ', ''), first_name, ' ', COALESCE(second_name, '')) as name,
         identification_type,
         identification_number,
         appointment_resolution as position,
@@ -949,7 +1006,7 @@ app.get('/api/officials/active', async (req, res) => {
         is_active as active 
       FROM ordering_officials 
       WHERE is_active = true 
-      ORDER BY first_name ASC, first_surname ASC`
+      ORDER BY first_surname ASC, first_name ASC`
     );
     client.release();
     res.json(result.rows);
@@ -1098,10 +1155,25 @@ app.patch('/api/officials/:id/toggle', async (req, res) => {
   try {
     const { id } = req.params;
     const client = await pool.connect();
+    
+    // Primero obtenemos el estado actual
+    const current = await client.query(
+      `SELECT is_active FROM ordering_officials WHERE official_id = $1`,
+      [id]
+    );
+    
+    if (current.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Funcionario no encontrado' });
+    }
+    
+    // Invertimos el estado de forma explícita
+    const newState = !current.rows[0].is_active;
+    
     const result = await client.query(
       `UPDATE ordering_officials 
-       SET is_active = NOT is_active 
-       WHERE official_id = $1 
+       SET is_active = $1, updated_at = CURRENT_TIMESTAMP, updated_by_user_id = 1
+       WHERE official_id = $2
        RETURNING 
         official_id as id,
         first_name,
@@ -1116,13 +1188,9 @@ app.patch('/api/officials/:id/toggle', async (req, res) => {
         institutional_email as email, 
         phone, 
         is_active as active`,
-      [id]
+      [newState, id]
     );
     client.release();
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Funcionario no encontrado' });
-    }
     
     res.json(result.rows[0]);
   } catch (error) {

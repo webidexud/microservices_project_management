@@ -281,14 +281,14 @@ export default function Projects() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/projects/${project.id}`)}
+                            onClick={() => navigate(`/projects/view/${project.id}`)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/projects/${project.id}/edit`)}
+                            onClick={() => navigate(`/projects/edit/${project.id}`)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>

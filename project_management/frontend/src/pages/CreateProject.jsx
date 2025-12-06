@@ -435,14 +435,14 @@ const confirmarCreacion = async () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium block mb-2">
-                      Funcionario Ordenador <span className="text-danger">*</span>
+                      Supervisor del Proyecto <span className="text-danger">*</span>
                     </label>
                     <SearchableSelect
                       name="funcionario_ordenador_id"
                       value={formData.funcionario_ordenador_id}
                       onChange={handleInputChange}
                       options={officials || []}
-                      placeholder="Seleccione funcionario ordenador..."
+                      placeholder="Seleccione supervisor del proyecto..."
                       required
                     />
                   </div>
@@ -706,7 +706,7 @@ const confirmarCreacion = async () => {
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white text-xl">
                       ✅
                     </div>
-                    <h2 className="text-xl font-semibold">Datos de Aprobación del Proyecto</h2>
+                    <h2 className="text-xl font-semibold">Datos de Aprobación del Proyecto - Comité Central</h2>
                   </div>
 
                   <div className="grid grid-cols-3 gap-5">

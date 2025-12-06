@@ -528,7 +528,7 @@ const timelineEvents = createTimelineEvents()
                   {project.ordering_official_name && (
                     <div>
                       <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                        Funcionario Ordenador
+                        Supervisor del Proyecto
                       </label>
                       <p className="text-base font-medium mt-1">
                         {project.ordering_official_name}
@@ -1634,7 +1634,7 @@ const timelineEvents = createTimelineEvents()
                               {mod.ordering_official_id && (
                                 <div>
                                   <label className="text-xs font-medium text-neutral-500 uppercase">
-                                    Funcionario Ordenador
+                                    Supervisor del Proyecto
                                   </label>
                                   <p className="text-sm font-medium mt-1">ID: {mod.ordering_official_id}</p>
                                 </div>
