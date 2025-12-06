@@ -51,78 +51,80 @@ export default function Projects() {
   const [selectedProjectForModifications, setSelectedProjectForModifications] = useState(null)
   
   const navigate = useNavigate()
-  const queryClient = useQueryClient() // ✅ Moverlo después de los estados
+  const queryClient = useQueryClient()
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: projectsApi.getAll,
   })
 
-  // ✅ Mutación para eliminar
+  // Mutación para eliminar
   const deleteMutation = useMutation({
     mutationFn: (id) => projectsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] })
       setShowDeleteDialog(false)
       setProjectToDelete(null)
-      alert("Proyecto deshabilitado exitosamente")
-    },
-    onError: (error) => {
-      alert("Error al deshabilitar el proyecto: " + error.message)
     },
   })
 
-  const filteredProjects = projects?.filter((project) => {
-    const matchesSearch =
-      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.entity.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus =
-      statusFilter === "all" || project.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  })
-
-  const getStatusColor = (status) => {
-    const colors = {
-      "In Progress": "info",
-      "Pending": "warning",
-      "Completed": "success",
-      "Suspended": "danger",
-    }
-    return colors[status] || "default"
-  }
-
-  const handleViewProject = (project) => {
-    navigate(`/projects/view/${project.id}`)
-  }
-
-  const handleEditProject = (project) => {
-    navigate(`/projects/edit/${project.id}`)
-  }
-
-  const handleDeleteProject = (project) => {
+  const handleDelete = (project) => {
     setProjectToDelete(project)
     setShowDeleteDialog(true)
   }
 
-  const handleOpenModifications = (project) => {
-    setSelectedProjectForModifications(project)
-    setShowModificationsDialog(true)
-  }
-
-  // ✅ FALTABA esta función
   const confirmDelete = () => {
     if (projectToDelete) {
       deleteMutation.mutate(projectToDelete.id)
     }
   }
 
+  const getStatusBadgeClass = (status) => {
+    const statusClasses = {
+      "En ejecución": "bg-blue-100 text-blue-800 border-blue-300",
+      "Por iniciar": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "Finalizado": "bg-green-100 text-green-800 border-green-300",
+      "Suspendido": "bg-red-100 text-red-800 border-red-300",
+      "Planeación": "bg-purple-100 text-purple-800 border-purple-300",
+    }
+    return statusClasses[status] || "bg-gray-100 text-gray-800 border-gray-300"
+  }
+
+  // 🔥 FILTROS CORREGIDOS - Usando 'name' como devuelve el backend
+  const filteredProjects = projects?.filter((project) => {
+    const matchesSearch =
+      project.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.entity?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesStatus = statusFilter === "all" || project.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  // 🔥 ESTADÍSTICAS CORREGIDAS - Usando 'value' como devuelve el backend
+  const stats = {
+    total: projects?.length || 0,
+    enEjecucion: projects?.filter(p => p.status === "En ejecución").length || 0,
+    porIniciar: projects?.filter(p => p.status === "Por iniciar").length || 0,
+    // 🔥 VALOR TOTAL CORREGIDO - el backend devuelve 'value' (no 'project_value')
+    valorTotal: projects?.reduce((sum, p) => {
+      const valor = parseFloat(p.value) || 0
+      return sum + valor
+    }, 0) || 0
+  }
+
+  // 🔥 DEBUG: Descomentar para ver los datos en consola
+  // console.log('Projects data:', projects)
+  // console.log('Stats calculadas:', stats)
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-text-secondary">Cargando proyectos...</p>
+        </div>
       </div>
     )
   }
@@ -130,11 +132,11 @@ export default function Projects() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Proyectos</h1>
+          <h1 className="text-3xl font-bold">Gestión de Proyectos</h1>
           <p className="text-text-secondary mt-1">
-            Gestión de proyectos de extensión
+            Administra y da seguimiento a todos los proyectos de extensión
           </p>
         </div>
         <div className="flex gap-2">
@@ -168,10 +170,12 @@ export default function Projects() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="In Progress">En ejecución</option>
-              <option value="Pending">Por iniciar</option>
-              <option value="Completed">Finalizado</option>
-              <option value="Suspended">Suspendido</option>
+              <option value="all">Todos los estados</option>
+              <option value="En ejecución">En ejecución</option>
+              <option value="Por iniciar">Por iniciar</option>
+              <option value="Finalizado">Finalizado</option>
+              <option value="Suspendido">Suspendido</option>
+              <option value="Planeación">Planeación</option>
             </Select>
             <Button variant="outline">
               <Filter className="h-4 w-4 mr-2" />
@@ -181,14 +185,14 @@ export default function Projects() {
         </CardContent>
       </Card>
 
-      {/* Stats Cards */}
+      {/* 🔥 Stats Cards CORREGIDAS */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">Total Proyectos</p>
-                <p className="text-2xl font-bold">{projects?.length || 0}</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
               </div>
               <FileText className="h-8 w-8 text-primary" />
             </div>
@@ -199,12 +203,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">En Ejecución</p>
-                  <p className="text-2xl font-bold">
-                    {
-                      projects?.filter((p) => p.status === "In Progress")
-                        .length || 0
-                    }
-                  </p>
+                <p className="text-2xl font-bold">{stats.enEjecucion}</p>
               </div>
               <Calendar className="h-8 w-8 text-info" />
             </div>
@@ -215,9 +214,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">Por Iniciar</p>
-                <p className="text-2xl font-bold">
-                  {projects?.filter((p) => p.status === "Pending").length || 0}
-                </p>
+                <p className="text-2xl font-bold">{stats.porIniciar}</p>
               </div>
               <Clock className="h-8 w-8 text-warning" />
             </div>
@@ -229,9 +226,7 @@ export default function Projects() {
               <div>
                 <p className="text-sm text-text-secondary">Valor Total</p>
                 <p className="text-xl font-bold">
-                  {formatCurrency(
-                    projects?.reduce((sum, p) => sum + (p.value || 0), 0) || 0
-                  )}
+                  {formatCurrency(stats.valorTotal)}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-success" />
@@ -249,233 +244,125 @@ export default function Projects() {
         </CardHeader>
         <CardContent>
           {filteredProjects && filteredProjects.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Entidad</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha Fin</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProjects.map((project) => (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">{project.code}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{project.name}</p>
-                        <p className="text-sm text-text-secondary">
-                          {project.type}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{project.entity}</TableCell>
-                    <TableCell>{formatCurrency(project.value)}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusColor(project.status)}>
-                        {project.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(project.end_date)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewProject(project)}
-                          title="Ver detalles del proyecto"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditProject(project)}
-                          title="Editar proyecto"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleDeleteProject(project)}
-                          title="Deshabilitar proyecto"
-                        >
-                          <Trash2 className="h-4 w-4 text-danger" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenModifications(project)}
-                          title="Ver/Agregar modificaciones (Adiciones y Prórrogas)"
-                        >
-                          <FileEdit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Nombre del Proyecto</TableHead>
+                    <TableHead>Entidad</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Inicio</TableHead>
+                    <TableHead>Fin</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredProjects.map((project) => (
+                    <TableRow key={project.id}>
+                      <TableCell className="font-medium">{project.code}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {project.name}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {project.entity}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadgeClass(project.status)}>
+                          {project.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatCurrency(project.value)}</TableCell>
+                      <TableCell>{formatDate(project.start_date)}</TableCell>
+                      <TableCell>{formatDate(project.end_date)}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/projects/${project.id}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/projects/${project.id}/edit`)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProjectForModifications(project)
+                              setShowModificationsDialog(true)
+                            }}
+                          >
+                            <FileEdit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(project)}
+                            className="text-danger hover:text-danger"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            <div className="py-12 text-center text-text-secondary">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No hay proyectos disponibles</p>
-              <p className="text-sm mt-2">
-                {searchTerm || statusFilter !== "all" 
-                  ? "No se encontraron proyectos con los filtros aplicados"
-                  : "Crea tu primer proyecto para comenzar"}
-              </p>
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-text-secondary mx-auto mb-4 opacity-50" />
+              <p className="text-text-secondary">No se encontraron proyectos</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Dialog Modificaciones */}
-      <ModificationsDialog
-        project={selectedProjectForModifications}
-        open={showModificationsDialog}
-        onClose={() => {
-          setShowModificationsDialog(false)
-          setSelectedProjectForModifications(null)
-        }}
-      />
-
-      {/* Dialog Detalle de Proyecto */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-3xl" onClose={() => setShowDetailDialog(false)}>
+      {/* Dialog de Confirmación de Eliminación */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Detalle del Proyecto</DialogTitle>
+            <DialogTitle>Confirmar Eliminación</DialogTitle>
             <DialogDescription>
-              {selectedProject?.code} - {selectedProject?.name}
+              ¿Estás seguro de que deseas eliminar el proyecto{" "}
+              <span className="font-semibold">{projectToDelete?.name}</span>?
+              Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          {selectedProject && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Entidad
-                  </p>
-                  <p className="text-base">{selectedProject.entity}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Dependencia
-                  </p>
-                  <p className="text-base">{selectedProject.department}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Tipo
-                  </p>
-                  <p className="text-base">{selectedProject.type}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Estado
-                  </p>
-                  <Badge variant={getStatusColor(selectedProject.status)}>
-                    {selectedProject.status}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Fecha Inicio
-                  </p>
-                  <p className="text-base">
-                    {formatDate(selectedProject.start_date)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Fecha Fin
-                  </p>
-                  <p className="text-base">
-                    {formatDate(selectedProject.end_date)}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-sm font-medium text-text-secondary">
-                    Valor del Proyecto
-                  </p>
-                  <p className="text-2xl font-bold text-primary">
-                    {formatCurrency(selectedProject.value)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowDetailDialog(false)}
-            >
-              Cerrar
-            </Button>
-            <Button onClick={() => handleEditProject(selectedProject)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar Proyecto
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ✅ DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN (FALTABA TODO ESTO) */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-danger/10 flex items-center justify-center">
-              <Trash2 className="h-8 w-8 text-danger" />
-            </div>
-            <DialogTitle className="text-center text-xl">
-              ¿Deshabilitar proyecto?
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-center text-text-secondary">
-              ¿Estás seguro que deseas deshabilitar este proyecto?
-            </p>
-            {projectToDelete && (
-              <div className="bg-neutral-50 dark:bg-neutral-900 p-4 rounded-lg space-y-2">
-                <div>
-                  <p className="text-xs text-text-secondary">Código</p>
-                  <p className="font-semibold">{projectToDelete.code}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-text-secondary">Nombre</p>
-                  <p className="font-medium">{projectToDelete.name}</p>
-                </div>
-              </div>
-            )}
-            <div className="bg-warning/10 border border-warning/20 p-3 rounded-lg">
-              <p className="text-sm text-warning-dark dark:text-warning-light">
-                <strong>Nota:</strong> El proyecto no se eliminará permanentemente, solo se deshabilitará y dejará de aparecer en el listado activo.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="flex justify-center gap-3">
-            <Button
-              variant="outline"
               onClick={() => setShowDeleteDialog(false)}
-              disabled={deleteMutation.isPending}
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? "Deshabilitando..." : "Sí, Deshabilitar"}
+              {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de Modificaciones */}
+      {selectedProjectForModifications && (
+        <ModificationsDialog
+          open={showModificationsDialog}
+          onOpenChange={setShowModificationsDialog}
+          project={selectedProjectForModifications}
+        />
+      )}
     </div>
   )
 }

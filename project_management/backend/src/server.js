@@ -2944,8 +2944,7 @@ if (modification_type === 'LIQUIDATION') {
     ]
   );
       
-      console.log(`📋 Liquidación creada para modificación #${modificationNumber}`);
-    
+  console.log(`📋 Liquidación creada para modificación #${modificationNumber}`);
 }
 
     // 14. Si es MODIFICATION (cambio de cláusulas), crear registro en modification_clause_changes

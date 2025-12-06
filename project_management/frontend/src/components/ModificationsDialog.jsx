@@ -33,71 +33,86 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 export default function ModificationsDialog({ project, open, onClose }) {
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
-    modification_type: "ADDITION",
-    addition_value: "",
-    extension_days: "",
-    new_end_date: "",
-    justification: "",
-    administrative_act: "",
-    approval_date: "",
-    // Campos nuevos:
-    extension_period_text: "",
-    cdp: "",
-    cdp_value: "",
-    rp: "",
-    rp_value: "",
-    supervisor_name: "",
-    supervisor_id: "",
-    supervisor_entity_name: "",
-    entity_legal_representative_name: "",
-    entity_legal_representative_id: "",
-    entity_legal_representative_id_type: "CC",
-    ordering_official_id: "",
-    requires_policy_update: false,
-    policy_update_description: "",
-    payment_method_modification: "",
-    // Campos de suspensión:
-    suspension_start_date: "",
-    suspension_reason: "",
-    suspension_days: "",
-    expected_restart_date: "",
-    suspension_observations: "",
-    // Campos de reinicio:
-    restart_date: "",
-    actual_suspension_days: "",
-    restart_observations: "",
-    // Campos de liquidación:
-    liquidation_date: "",
-    final_value: "",
-    liquidation_act_number: "",
-    liquidation_act_date: "",
-    penalties_amount: "",
-    final_balance: "",
-    has_pending_obligations: false,
-    pending_obligations_description: "",
-    liquidation_observations: "",
-    // Campos de cambio de cláusulas:
-    clause_number: "",
-    clause_name: "",
-    original_clause_text: "",
-    new_clause_text: "",
-    requires_resource_liberation: false,
-    cdp_to_release: "",
-    rp_to_release: "",
-    liberation_amount: "",
-    // Campos de cesión:
-    assignment_type: "TOTAL",
-    assignor_name: "",
-    assignor_id: "",
-    assignee_name: "",
-    assignee_id: "",
-    assignee_id_type: "CC",
-    assignment_date: "",
-    assignment_value: "",
-    assignment_percentage: "",
-    related_derived_project_id: "",
-    assignment_observations: "",
-  })
+  modification_type: "ADDITION",
+  addition_value: "",
+  extension_days: "",
+  new_end_date: "",
+  justification: "",
+  administrative_act: "",
+  approval_date: "",
+  // Campos nuevos:
+  extension_period_text: "",
+  cdp: "",
+  cdp_value: "",
+  rp: "",
+  rp_value: "",
+  supervisor_name: "",
+  supervisor_id: "",
+  supervisor_entity_name: "",
+  entity_legal_representative_name: "",
+  entity_legal_representative_id: "",
+  entity_legal_representative_id_type: "CC",
+  ordering_official_id: "",
+  requires_policy_update: false,
+  policy_update_description: "",
+  payment_method_modification: "",
+  // Campos de suspensión:
+  suspension_start_date: "",
+  suspension_reason: "",
+  suspension_days: "",
+  expected_restart_date: "",
+  suspension_observations: "",
+  // Campos de reinicio:
+  restart_date: "",
+  actual_suspension_days: "",
+  restart_observations: "",
+  // Campos de liquidación:
+  liquidation_date: "",
+  liquidation_type: "BILATERAL",
+  initial_contract_value: "",
+  execution_percentage: "",
+  executed_value: "",
+  unilateral_cause: "",
+  cause_analysis: "",
+  pending_payment_value: "",
+  value_to_release: "",
+  liquidation_signature_date: "",
+  final_value: "",
+  liquidation_act_number: "",
+  liquidation_act_date: "",
+  penalties_amount: "",
+  final_balance: "",
+  has_pending_obligations: false,
+  pending_obligations_description: "",
+  liquidation_observations: "",
+  // Campos de cambio de cláusulas:
+  clause_number: "",
+  clause_name: "",
+  original_clause_text: "",
+  new_clause_text: "",
+  requires_resource_liberation: false,
+  cdp_to_release: "",
+  rp_to_release: "",
+  liberation_amount: "",
+  // Campos de cesión:
+  assignment_type: "UNIVERSITY_AS_ASSIGNEE",
+  assignor_name: "",
+  assignor_id: "",
+  assignor_id_type: "CC",
+  assignee_name: "",
+  assignee_id: "",
+  assignee_id_type: "CC",
+  assignment_date: "",
+  assignment_signature_date: "",
+  value_paid_to_assignor: "",
+  value_pending_to_assignor: "",
+  value_to_assign: "",
+  handover_report_path: "",
+  technical_report_path: "",
+  account_statement_path: "",
+  guarantee_modification_request: "",
+  related_derived_project_id: "",
+})
 
   const queryClient = useQueryClient()
   const projectId = project?.id || project?.project_id
@@ -181,6 +196,15 @@ export default function ModificationsDialog({ project, open, onClose }) {
       restart_observations: "",
       // Campos de liquidación:
       liquidation_date: "",
+      liquidation_type: "BILATERAL",
+      initial_contract_value: "",
+      execution_percentage: "",
+      executed_value: "",
+      unilateral_cause: "",
+      cause_analysis: "",
+      pending_payment_value: "",
+      value_to_release: "",
+      liquidation_signature_date: "",
       final_value: "",
       liquidation_act_number: "",
       liquidation_act_date: "",
@@ -199,17 +223,23 @@ export default function ModificationsDialog({ project, open, onClose }) {
       rp_to_release: "",
       liberation_amount: "",
       // Campos de cesión:
-      assignment_type: "TOTAL",
+      assignment_type: "UNIVERSITY_AS_ASSIGNEE",
       assignor_name: "",
       assignor_id: "",
+      assignor_id_type: "CC",
       assignee_name: "",
       assignee_id: "",
       assignee_id_type: "CC",
       assignment_date: "",
-      assignment_value: "",
-      assignment_percentage: "",
+      assignment_signature_date: "",
+      value_paid_to_assignor: "",
+      value_pending_to_assignor: "",
+      value_to_assign: "",
+      handover_report_path: "",
+      technical_report_path: "",
+      account_statement_path: "",
+      guarantee_modification_request: "",
       related_derived_project_id: "",
-      assignment_observations: "",
     })
   }
 
@@ -276,17 +306,67 @@ if (formData.modification_type === "RESTART" && !formData.restart_date) {
   alert("La fecha de reinicio es obligatoria")
   return
 }
-if (formData.modification_type === "LIQUIDATION" && (!formData.liquidation_date || !formData.final_value)) {
-  alert("La fecha de liquidación y el valor final son obligatorios")
-  return
+if (formData.modification_type === "LIQUIDATION") {
+  if (!formData.liquidation_date || !formData.final_value) {
+    alert("La fecha de liquidación y el valor final son obligatorios")
+    return
+  }
+  if (!formData.liquidation_type) {
+    alert("El tipo de liquidación es obligatorio")
+    return
+  }
+  if (!formData.initial_contract_value) {
+    alert("El valor inicial del contrato es obligatorio")
+    return
+  }
+  if (!formData.execution_percentage) {
+    alert("El porcentaje de ejecución es obligatorio")
+    return
+  }
+  if (!formData.executed_value) {
+    alert("El valor ejecutado es obligatorio")
+    return
+  }
+  if (!formData.liquidation_observations) {
+    alert("Las observaciones del supervisor son obligatorias")
+    return
+  }
+  if (formData.liquidation_type === 'UNILATERAL') {
+    if (!formData.liquidation_act_number) {
+      alert("El número de resolución es obligatorio para liquidación unilateral")
+      return
+    }
+    if (!formData.unilateral_cause) {
+      alert("La causa de liquidación unilateral es obligatoria")
+      return
+    }
+  }
 }
 if (formData.modification_type === "MODIFICATION" && (!formData.clause_number || !formData.clause_name || !formData.new_clause_text)) {
   alert("El número de cláusula, nombre y nuevo texto son obligatorios")
   return
 }
-if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !formData.assignee_id)) {
-  alert("El nombre y la identificación del cesionario son obligatorios")
-  return
+if (formData.modification_type === "ASSIGNMENT") {
+  if (!formData.assignment_type) {
+    alert("El tipo de cesión es obligatorio")
+    return
+  }
+  if (!formData.assignor_name || !formData.assignor_id) {
+    alert("El nombre y la identificación del cedente son obligatorios")
+    return
+  }
+  if (!formData.assignee_name || !formData.assignee_id) {
+    alert("El nombre y la identificación del cesionario son obligatorios")
+    return
+  }
+  if (!formData.assignment_date) {
+    alert("La fecha de cesión es obligatoria")
+    return
+  }
+  if (!formData.value_to_assign) {
+    alert("El valor a ceder es obligatorio")
+    return
+  }
 }
   
   // Validaciones específicas para adiciones
@@ -336,16 +416,26 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
     restart_date: formData.restart_date || null,
     actual_suspension_days: formData.actual_suspension_days ? parseInt(formData.actual_suspension_days) : null,
     restart_observations: formData.restart_observations || null,
-    // Campos de liquidación:
-    liquidation_date: formData.liquidation_date || null,
-    final_value: formData.final_value ? cleanNumber(formData.final_value) : null,
-    liquidation_act_number: formData.liquidation_act_number || null,
-    liquidation_act_date: formData.liquidation_act_date || null,
-    penalties_amount: formData.penalties_amount ? cleanNumber(formData.penalties_amount) : null,
-    final_balance: formData.final_balance ? cleanNumber(formData.final_balance) : null,
-    has_pending_obligations: formData.has_pending_obligations || false,
-    pending_obligations_description: formData.pending_obligations_description || null,
-    liquidation_observations: formData.liquidation_observations || null,
+// Campos de liquidación (mapeo correcto para el backend):
+liquidation_date: formData.liquidation_date || null,
+liquidation_type: formData.liquidation_type || null,
+resolution_number: formData.liquidation_act_number || null,
+resolution_date: formData.liquidation_act_date || null,
+unilateral_cause: formData.unilateral_cause || null,
+cause_analysis: formData.cause_analysis || null,
+initial_contract_value: formData.initial_contract_value ? cleanNumber(formData.initial_contract_value) : null,
+final_value_with_additions: formData.final_value ? cleanNumber(formData.final_value) : null,
+execution_percentage: formData.execution_percentage ? parseFloat(formData.execution_percentage) : null,
+executed_value: formData.executed_value ? cleanNumber(formData.executed_value) : null,
+pending_payment_value: formData.pending_payment_value ? cleanNumber(formData.pending_payment_value) : null,
+value_to_release: formData.value_to_release ? cleanNumber(formData.value_to_release) : null,
+liquidation_signature_date: formData.liquidation_signature_date || null,
+supervisor_liquidation_request: formData.liquidation_observations || null,
+// Campos adicionales (no van a la BD pero se usan para display):
+penalties_amount: formData.penalties_amount ? cleanNumber(formData.penalties_amount) : null,
+final_balance: formData.final_balance ? cleanNumber(formData.final_balance) : null,
+has_pending_obligations: formData.has_pending_obligations || false,
+pending_obligations_description: formData.pending_obligations_description || null,
     // Campos de cambio de cláusulas:
     clause_number: formData.clause_number || null,
     clause_name: formData.clause_name || null,
@@ -355,18 +445,26 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
     cdp_to_release: formData.cdp_to_release || null,
     rp_to_release: formData.rp_to_release || null,
     liberation_amount: formData.liberation_amount ? cleanNumber(formData.liberation_amount) : null,
-    // Campos de cesión:
+    // Campos de cesión (mapeo correcto para el backend):
     assignment_type: formData.assignment_type || null,
     assignor_name: formData.assignor_name || null,
     assignor_id: formData.assignor_id || null,
+    assignor_id_type: formData.assignor_id_type || null,
     assignee_name: formData.assignee_name || null,
     assignee_id: formData.assignee_id || null,
     assignee_id_type: formData.assignee_id_type || null,
+    supervisor_name: formData.supervisor_name || null,
+    supervisor_id: formData.supervisor_id || null,
     assignment_date: formData.assignment_date || null,
-    assignment_value: formData.assignment_value ? cleanNumber(formData.assignment_value) : null,
-    assignment_percentage: formData.assignment_percentage ? parseFloat(formData.assignment_percentage) : null,
-    related_derived_project_id: formData.related_derived_project_id || null,
-    assignment_observations: formData.assignment_observations || null,
+    assignment_signature_date: formData.assignment_signature_date || null,
+    value_paid_to_assignor: formData.value_paid_to_assignor ? cleanNumber(formData.value_paid_to_assignor) : null,
+    value_pending_to_assignor: formData.value_pending_to_assignor ? cleanNumber(formData.value_pending_to_assignor) : null,
+    value_to_assign: formData.value_to_assign ? cleanNumber(formData.value_to_assign) : null,  // ✅ CORREGIDO
+    handover_report_path: formData.handover_report_path || null,
+    technical_report_path: formData.technical_report_path || null,
+    account_statement_path: formData.account_statement_path || null,
+    guarantee_modification_request: formData.guarantee_modification_request || null,
+    related_derived_project_id: formData.related_derived_project_id ? parseInt(formData.related_derived_project_id) : null,
   }
 
   createMutation.mutate(datos)
@@ -951,6 +1049,7 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
                     Información de Liquidación
                   </h4>
                   
+                  {/* PRIMERA FILA - Campos obligatorios principales */}
                   <div className="grid grid-cols-3 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-medium mb-2">
@@ -964,6 +1063,56 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                         required
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Tipo de Liquidación <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="liquidation_type"
+                        value={formData.liquidation_type}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        required
+                      >
+                        <option value="BILATERAL">Bilateral (Mutuo Acuerdo)</option>
+                        <option value="UNILATERAL">Unilateral (Por Incumplimiento)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Fecha de Firma de Liquidación
+                      </label>
+                      <input
+                        type="date"
+                        name="liquidation_signature_date"
+                        value={formData.liquidation_signature_date}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SEGUNDA FILA - Valores del contrato */}
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor Inicial del Contrato <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="initial_contract_value"
+                        value={formData.initial_contract_value}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        required
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.initial_contract_value && `$ ${formatNumber(formData.initial_contract_value)}`}
+                      </p>
                     </div>
 
                     <div>
@@ -986,26 +1135,83 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Penalidades
+                        Valor Ejecutado <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        name="penalties_amount"
-                        value={formData.penalties_amount}
+                        name="executed_value"
+                        value={formData.executed_value}
                         onChange={handleNumberInput}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                         placeholder="0"
+                        required
                       />
-                      <p className="text-xs text-red-600 mt-1 font-medium">
-                        {formData.penalties_amount && `$ ${formatNumber(formData.penalties_amount)}`}
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.executed_value && `$ ${formatNumber(formData.executed_value)}`}
                       </p>
                     </div>
                   </div>
 
+                  {/* TERCERA FILA - Porcentajes y valores pendientes */}
                   <div className="grid grid-cols-3 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Número del Acta de Liquidación
+                        Porcentaje de Ejecución (%) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="execution_percentage"
+                        value={formData.execution_percentage}
+                        onChange={handleInputChange}
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor Pendiente de Pago
+                      </label>
+                      <input
+                        type="text"
+                        name="pending_payment_value"
+                        value={formData.pending_payment_value}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.pending_payment_value && `$ ${formatNumber(formData.pending_payment_value)}`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor a Liberar
+                      </label>
+                      <input
+                        type="text"
+                        name="value_to_release"
+                        value={formData.value_to_release}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.value_to_release && `$ ${formatNumber(formData.value_to_release)}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* CUARTA FILA - Acta de liquidación */}
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Número del Acta de Liquidación {formData.liquidation_type === 'UNILATERAL' && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="text"
@@ -1014,6 +1220,7 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                         placeholder="Ej: ACTA-001-2025"
+                        required={formData.liquidation_type === 'UNILATERAL'}
                       />
                     </div>
 
@@ -1032,22 +1239,59 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Saldo Final
+                        Penalidades
                       </label>
                       <input
                         type="text"
-                        name="final_balance"
-                        value={formData.final_balance}
+                        name="penalties_amount"
+                        value={formData.penalties_amount}
                         onChange={handleNumberInput}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                         placeholder="0"
                       />
-                      <p className="text-xs text-gray-600 mt-1 font-medium">
-                        {formData.final_balance && `$ ${formatNumber(formData.final_balance)}`}
+                      <p className="text-xs text-red-600 mt-1 font-medium">
+                        {formData.penalties_amount && `$ ${formatNumber(formData.penalties_amount)}`}
                       </p>
                     </div>
                   </div>
 
+                  {/* SECCIÓN ESPECIAL PARA LIQUIDACIÓN UNILATERAL */}
+                  {formData.liquidation_type === 'UNILATERAL' && (
+                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg mb-6 border border-red-200">
+                      <h5 className="font-semibold mb-3 text-red-700">Información de Liquidación Unilateral</h5>
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-2">
+                          Causa de Liquidación Unilateral <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          name="unilateral_cause"
+                          value={formData.unilateral_cause}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          rows="3"
+                          placeholder="Describa la causa que justifica la liquidación unilateral (incumplimiento, irregularidades, etc.)"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Análisis de la Causa
+                        </label>
+                        <textarea
+                          name="cause_analysis"
+                          value={formData.cause_analysis}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          rows="3"
+                          placeholder="Análisis detallado de la situación que lleva a la liquidación unilateral"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* OBLIGACIONES PENDIENTES */}
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg mb-6">
                     <div className="flex items-center gap-2 mb-3">
                       <input
@@ -1082,17 +1326,19 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
                     )}
                   </div>
 
+                  {/* OBSERVACIONES DEL SUPERVISOR */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      Observaciones de la Liquidación
+                      Observaciones del Supervisor <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       name="liquidation_observations"
                       value={formData.liquidation_observations}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                      rows="3"
-                      placeholder="Observaciones generales sobre la liquidación del contrato"
+                      rows="4"
+                      placeholder="Observaciones generales del supervisor sobre la liquidación del contrato"
+                      required
                     />
                   </div>
                 </div>
@@ -1238,193 +1484,339 @@ if (formData.modification_type === "ASSIGNMENT" && (!formData.assignee_name || !
                   </div>
                 )}
             {/* CAMPOS PARA CESIÓN */}
-            {formData.modification_type === "ASSIGNMENT" && (
-              <div className="border-t pt-6">
-                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-indigo-700">
-                  <TrendingUp className="h-5 w-5" />
-                  Cesión Contractual
-                </h4>
-                
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Tipo de Cesión <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="assignment_type"
-                      value={formData.assignment_type}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                      required
-                    >
-                      <option value="TOTAL">Cesión Total</option>
-                      <option value="PARTIAL">Cesión Parcial</option>
-                      <option value="SUBCONTRACT">Subcontratación</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Fecha de Cesión
-                    </label>
-                    <input
-                      type="date"
-                      name="assignment_date"
-                      value={formData.assignment_date}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-
-                {/* Cedente (Assignor) - Actual contratista */}
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6">
-                  <h5 className="font-medium mb-3 text-gray-700 dark:text-gray-300">
-                    Cedente (Contratista Actual)
-                  </h5>
-                  <div className="grid grid-cols-2 gap-4">
+              {formData.modification_type === "ASSIGNMENT" && (
+                <div className="border-t pt-6">
+                  <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-indigo-700">
+                    <TrendingUp className="h-5 w-5" />
+                    Cesión Contractual
+                  </h4>
+                  
+                  {/* PRIMERA FILA - Tipo y fechas */}
+                  <div className="grid grid-cols-3 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Nombre del Cedente
-                      </label>
-                      <input
-                        type="text"
-                        name="assignor_name"
-                        value={formData.assignor_name}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                        placeholder="Nombre de quien cede el contrato"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Identificación del Cedente
-                      </label>
-                      <input
-                        type="text"
-                        name="assignor_id"
-                        value={formData.assignor_id}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                        placeholder="CC o NIT"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cesionario (Assignee) - Nuevo contratista */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
-                  <h5 className="font-medium mb-3 text-blue-700 dark:text-blue-300">
-                    Cesionario (Nuevo Contratista) <span className="text-red-500">*</span>
-                  </h5>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Nombre del Cesionario <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="assignee_name"
-                        value={formData.assignee_name}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                        placeholder="Nombre completo"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Tipo de Identificación
+                        Tipo de Cesión <span className="text-red-500">*</span>
                       </label>
                       <select
-                        name="assignee_id_type"
-                        value={formData.assignee_id_type}
+                        name="assignment_type"
+                        value={formData.assignment_type}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        required
                       >
-                        <option value="CC">Cédula de Ciudadanía</option>
-                        <option value="CE">Cédula de Extranjería</option>
-                        <option value="NIT">NIT</option>
-                        <option value="PA">Pasaporte</option>
+                        <option value="UNIVERSITY_AS_ASSIGNEE">Universidad como Cesionaria (Recibe el contrato)</option>
+                        <option value="UNIVERSITY_AS_ASSIGNOR">Universidad como Cedente (Cede el contrato)</option>
                       </select>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {formData.assignment_type === 'UNIVERSITY_AS_ASSIGNEE' 
+                          ? 'La universidad recibe las obligaciones del contrato' 
+                          : 'La universidad transfiere las obligaciones del contrato'}
+                      </p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Número de Identificación <span className="text-red-500">*</span>
+                        Fecha de Cesión <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="text"
-                        name="assignee_id"
-                        value={formData.assignee_id}
+                        type="date"
+                        name="assignment_date"
+                        value={formData.assignment_date}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                        placeholder="Número"
                         required
                       />
                     </div>
-                  </div>
-                </div>
 
-                {/* Valor y Porcentaje de Cesión */}
-                {formData.assignment_type === "PARTIAL" && (
-                  <div className="grid grid-cols-2 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Valor de la Cesión
+                        Fecha de Firma del Acta
+                      </label>
+                      <input
+                        type="date"
+                        name="assignment_signature_date"
+                        value={formData.assignment_signature_date}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SEGUNDA FILA - Datos del CEDENTE (quien cede) */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+                    <h5 className="font-semibold mb-3 text-blue-700">Datos del Cedente (Quien Cede)</h5>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Nombre del Cedente <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="assignor_name"
+                          value={formData.assignor_name}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Nombre completo o razón social"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Tipo de Identificación
+                        </label>
+                        <select
+                          name="assignor_id_type"
+                          value={formData.assignor_id_type}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="CC">Cédula de Ciudadanía</option>
+                          <option value="CE">Cédula de Extranjería</option>
+                          <option value="NIT">NIT</option>
+                          <option value="PP">Pasaporte</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Número de Identificación <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="assignor_id"
+                          value={formData.assignor_id}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Número de documento"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TERCERA FILA - Datos del CESIONARIO (quien recibe) */}
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-6">
+                    <h5 className="font-semibold mb-3 text-green-700">Datos del Cesionario (Quien Recibe)</h5>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Nombre del Cesionario <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="assignee_name"
+                          value={formData.assignee_name}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Nombre completo o razón social"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Tipo de Identificación
+                        </label>
+                        <select
+                          name="assignee_id_type"
+                          value={formData.assignee_id_type}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="CC">Cédula de Ciudadanía</option>
+                          <option value="CE">Cédula de Extranjería</option>
+                          <option value="NIT">NIT</option>
+                          <option value="PP">Pasaporte</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Número de Identificación <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="assignee_id"
+                          value={formData.assignee_id}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="Número de documento"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CUARTA FILA - Valores */}
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor a Ceder <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        name="assignment_value"
-                        value={formData.assignment_value}
+                        name="value_to_assign"
+                        value={formData.value_to_assign}
+                        onChange={handleNumberInput}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        required
+                      />
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.value_to_assign && `$ ${formatNumber(formData.value_to_assign)}`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Valor Pagado al Cedente
+                      </label>
+                      <input
+                        type="text"
+                        name="value_paid_to_assignor"
+                        value={formData.value_paid_to_assignor}
                         onChange={handleNumberInput}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                         placeholder="0"
                       />
                       <p className="text-xs text-gray-600 mt-1 font-medium">
-                        {formData.assignment_value && `$ ${formatNumber(formData.assignment_value)}`}
+                        {formData.value_paid_to_assignor && `$ ${formatNumber(formData.value_paid_to_assignor)}`}
                       </p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Porcentaje de Cesión
+                        Valor Pendiente al Cedente
                       </label>
                       <input
-                        type="number"
-                        name="assignment_percentage"
-                        value={formData.assignment_percentage}
-                        onChange={handleInputChange}
+                        type="text"
+                        name="value_pending_to_assignor"
+                        value={formData.value_pending_to_assignor}
+                        onChange={handleNumberInput}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                         placeholder="0"
-                        min="0"
-                        max="100"
-                        step="0.01"
                       />
-                      <p className="text-xs text-gray-600 mt-1">
-                        {formData.assignment_percentage && `${formData.assignment_percentage}%`}
+                      <p className="text-xs text-gray-600 mt-1 font-medium">
+                        {formData.value_pending_to_assignor && `$ ${formatNumber(formData.value_pending_to_assignor)}`}
                       </p>
                     </div>
                   </div>
-                )}
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Observaciones de la Cesión
-                  </label>
-                  <textarea
-                    name="assignment_observations"
-                    value={formData.assignment_observations}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                    rows="3"
-                    placeholder="Detalles adicionales sobre la cesión contractual"
-                  />
+                  {/* QUINTA FILA - Supervisor */}
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Nombre del Supervisor
+                      </label>
+                      <input
+                        type="text"
+                        name="supervisor_name"
+                        value={formData.supervisor_name}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Nombre del supervisor del contrato"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Identificación del Supervisor
+                      </label>
+                      <input
+                        type="text"
+                        name="supervisor_id"
+                        value={formData.supervisor_id}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="CC, CE, etc."
+                      />
+                    </div>
+                  </div>
+
+                  {/* SEXTA FILA - Documentos (rutas) */}
+                  <div className="bg-gray-50 dark:bg-gray-900/20 p-4 rounded-lg mb-6">
+                    <h5 className="font-semibold mb-3">Rutas de Documentos</h5>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Informe de Entrega
+                        </label>
+                        <input
+                          type="text"
+                          name="handover_report_path"
+                          value={formData.handover_report_path}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="/documentos/entrega.pdf"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Informe Técnico
+                        </label>
+                        <input
+                          type="text"
+                          name="technical_report_path"
+                          value={formData.technical_report_path}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="/documentos/tecnico.pdf"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Estado de Cuenta
+                        </label>
+                        <input
+                          type="text"
+                          name="account_statement_path"
+                          value={formData.account_statement_path}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                          placeholder="/documentos/cuenta.pdf"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SÉPTIMA FILA - Proyecto derivado y solicitud de póliza */}
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        ID del Proyecto Derivado Relacionado
+                      </label>
+                      <input
+                        type="number"
+                        name="related_derived_project_id"
+                        value={formData.related_derived_project_id}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        placeholder="Dejar vacío si no aplica"
+                      />
+                      <p className="text-xs text-gray-600 mt-1">
+                        ⚠️ Solo completar si existe un proyecto derivado. Dejar vacío si no aplica.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Solicitud de Modificación de Póliza
+                      </label>
+                      <textarea
+                        name="guarantee_modification_request"
+                        value={formData.guarantee_modification_request}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                        rows="2"
+                        placeholder="Descripción de cambios requeridos en la póliza"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             {/* Justificación y Fecha de Aprobación */}
             <div className="border-t pt-6">
               <div className="grid grid-cols-2 gap-6">
