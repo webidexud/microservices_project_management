@@ -40,6 +40,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { projectsApi } from "@/lib/api"
 
+
 export default function Projects() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")

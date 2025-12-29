@@ -739,7 +739,7 @@ export default function EditProject() {
 
                   <div>
                     <label className="text-sm font-medium block mb-2">
-                      Cantidad de Beneficiarios
+                      Población Impactada Proyectada (Cantidad de Beneficiarios)
                     </label>
                     <Input
                       type="number"
@@ -747,7 +747,7 @@ export default function EditProject() {
                       value={formData.cantidad_beneficiarios}
                       onChange={handleInputChange}
                       min="0"
-                      placeholder="0"
+                      placeholder="Ingrese la cantidad estimada de beneficiarios"
                     />
                   </div>
                 </CardContent>

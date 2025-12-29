@@ -736,7 +736,7 @@ const timelineEvents = createTimelineEvents()
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-                    Beneficiarios
+                    Población Impactada
                   </p>
                   <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
                     {project.beneficiaries_count?.toLocaleString() || 0}
