@@ -1,0 +1,49 @@
+### Peticiones post contract
+
+### Peticiones get contracts
+GET http://10.20.100.31:4000/getContracts
+
+### Peticiones get contract by id
+
+GET http://10.20.100.31:4000/getContractById/25
+
+### Peticiones post create contract
+POST http://10.20.100.31:4000/CreateContracts
+content-type: application/json
+
+{
+    "CB_contract_type_id": "1",
+    "CB_payment_method_id": "1",
+    "CB_project_name": "Proyecto de Prueba",
+    "CB_execution_location": "fasd213",
+    "CB_value": "4123",
+    "CB_start_date": "2025-12-01",
+    "CB_end_date": "2025-12-01",
+    "CB_signature_ci_date": "2025-12-03",
+    "CB_issue_data": "2025-12-02",
+    "CB_total_duration": "0",
+    "CB_email": "juan1juan.jdar@gmail.com",
+    "CB_status_type_id": "1",
+    "CDP":[
+        {"CDP_number": "1","CDP_date": "2025-12-01"},
+        {"CDP_number": "2","CDP_date": "2025-12-02"},
+        {"CDP_number": "3","CDP_date": "2025-12-03"}
+    ],
+    "CD_contracting_entity":"Contracting Entity",
+    "CD_cia_object":"Cia Object",
+    "CD_contract_purpose":"Objeto del contrato",
+    "CD_specific_obligations":"Actividad 1; Actividad 2; Actividad 3",
+    "CD_deliverables":"Entrega 1; Entrega 2; Entrega 3",
+    "CD_education_level_id":"1"
+    
+}
+
+
+
+
+
+
+
+
+
+
