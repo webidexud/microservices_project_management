@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+
+    environment {
+        Dir_modules = 'NombreDelDirectorioDeModulos'
+    }
+
+
+    stages {
+        stage('Clonar Repositorio') {
+            steps {
+                script {
+                    if (fileExists('Siexud_V2_2025')) {
+                        dir('Siexud_V2_2025') { sh 'git pull origin dev' }
+                    } else {
+                        git branch: 'dev', 
+                        credentialsId: 'softwareGit', 
+                        url: 'https://github.com/siexud/Siexud_V2_2025.git'
+                    }
+                }
+            }
+        }
+
+        stage('Verificar la existencía del repositorio'){
+            steps{
+                script{
+                    if (!fileExists('${Dir_modules}')) {
+                        error "No se ha encontrado el modulo ${Dir_module}."
+                    } else {
+                        echo "El modulo ${Dir_module} existe."
+                    }
+                }
+            }
+        }
+
+        stage('Copiar carpeta del fronend al modulo correspondiente') {
+            steps {
+                script {
+                    if (!fileExists('${Dir_modules}/frontend')) {
+                        sh 'cp -r contract_module/frontend ${Dir_modules}/frontend'
+                    } else {
+                        echo "La carpeta frontend ya existe en el modulo ${Dir_modules}, sin embargo, revisar si tiene la linea gráfica correcta."
+                    }                   
+                }
+            }
+        }
+
+    }
+    parameters {
+        booleanParam(
+            name: 'FORCE_REBUILD_NODE_IMAGE',
+            defaultValue: false,
+            description: 'Forzar recreación de la imagen Node'
+        )
+    }
+}
