@@ -1,0 +1,251 @@
+services:
+  # ===== AUTH-SYSTEM SERVICES =====
+  auth_postgres:
+    image: postgres:15-alpine
+    container_name: auth_postgres_db
+    environment:
+      POSTGRES_DB: auth_system
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # ports:
+      # - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d auth_system" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth_network
+      - Network-main
+
+  auth_backend:
+    build:
+      context: ./auth-system/backend
+      dockerfile: Dockerfile
+    container_name: auth_backend
+    environment:
+      DATABASE_URL: postgresql://admin:password123@auth_postgres:5432/auth_system
+      JWT_SECRET: change-this-super-secret-key-in-production
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      NODE_ENV: development
+      LOG_LEVEL: info
+      PORT: 3000
+      DEFAULT_ADMIN_USERNAME: admin
+      DEFAULT_ADMIN_PASSWORD: admin123
+      DEFAULT_ADMIN_EMAIL: admin@sistema.com
+      DEFAULT_ADMIN_FIRST_NAME: Administrador
+      DEFAULT_ADMIN_LAST_NAME: Sistema
+      # ports:
+      # - "3000:3000"
+    depends_on:
+      auth_postgres:
+        condition: service_healthy
+    volumes:
+      # - ./auth-system/backend:/app
+      - backend_node_modules:/app/node_modules
+    networks:
+      - auth_network
+      - Network-main
+
+  auth_frontend:
+    build:
+      context: ./auth-system/frontend
+      dockerfile: Dockerfile
+    container_name: auth_frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+      VITE_APP_NAME: Auth System
+    ports:
+      - "3010:3000"
+    depends_on:
+      - auth_backend
+    volumes:
+      - ./auth-system/frontend:/app
+      - frontend_node_modules:/app/node_modules
+    networks:
+      - auth_network
+      - Network-main
+
+  auth_nginx:
+    build:
+      context: ./auth-system/nginx
+      dockerfile: Dockerfile
+    container_name: auth_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - auth_backend
+      - auth_frontend
+      - dashboard-direccion
+    volumes:
+      - ./auth-system/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./dashboar-direccion/src/public:/statics/dashboard-direccion/public
+    networks:
+      - auth_network
+      - Network-main
+
+  # ===== dashboard-direccion SERVICE =====
+  dashboard-direccion:
+    container_name: "dashboard-direccion"
+    build:
+      context: ./dashboar-direccion
+      dockerfile: Dockerfile
+    # PUERTO CERRADO - Solo acceso interno
+    expose:
+      - "61800"
+    # ports:
+    #   - "61800:61800"
+    environment:
+      - PORT=61800
+      - BASE_URL=${BASE_URL}
+      - NODE_OPTIONS=--max-old-space-size=4096 --expose-gc
+    volumes:
+      - ./dashboar-direccion/src:/app/src
+    networks:
+      - auth_network
+      - Network-main
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  analizador_excel_pmo:
+    build:
+      context: ./analizador_excel_pmo
+      dockerfile: Dockerfile
+    container_name: analizador_excel_pmo
+    volumes:
+      - ./analizador_excel_pmo:/usr/src/app
+    ports:
+      - "5000:5000"
+    networks:
+      - Network-main
+
+  contract_module_database:
+    build:
+      context: ./contract_module/database
+      dockerfile: Dockerfile
+    container_name: contract_module_database
+    environment:
+      POSTGRES_DB: contract_module
+      POSTGRES_USER: contract_admin
+      POSTGRES_PASSWORD: contract_password123
+    volumes:
+      - contract_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - Network-main
+
+  contract_module_backend:
+    build:
+      context: ./contract_module/backend
+      dockerfile: Dockerfile
+
+    container_name: contract_module_backend
+    # environment:
+    #   - PORT=3000
+    #   - NODE_ENV=development
+    env_file: ./contract_module/backend/example.env
+    ports:
+      - "4000:3000"
+    volumes:
+      - ./contract_module/backend:/app
+      - /app/node_modules # ← EXCLUIR node_modules del volumen
+    networks:
+      - Network-main
+
+  contract_module_frontend:
+    build:
+      context: ./contract_module/frontend
+      dockerfile: Dockerfile
+    container_name: contract_module_frontend
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    ports:
+      - "5000:3000"
+    volumes:
+      - ./contract_module/frontend:/app
+      - /app/node_modules # ← EXCLUIR node_modules del volumen
+    networks:
+      - Network-main
+
+  db_siexud_new:
+    container_name: db_siexud_new
+    image: postgres:16
+    volumes:
+      # - postgres_data_siexudNew:/var/lib/postgresql/data
+      - /home/sidexud_user/Servicios/backups/contract_module_db:/var/lib/postgresql/data
+    restart: always
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: qZVmQxZPE532qu39gGoH7F1DqrbUlW
+      POSTGRES_DB: POSBD
+      PGDATA: /var/lib/postgresql/data/pgdata
+    networks:
+      - Network-main
+    ports:
+      - "87:5432"
+
+  adminer_siexud_new:
+    image: adminer:latest
+    container_name: adminer_siexud_new
+    restart: always
+    depends_on:
+      - db_siexud_new
+    ports:
+      - "86:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db_siexud_new
+    networks:
+      - Network-main
+
+  basedataandres_backend:
+    build:
+      context: ./baseDataAndres/backend
+      dockerfile: Dockerfile
+    container_name: baseDataAndres_backend
+    ports:
+      - "3005:3000"
+    volumes:
+      - ./baseDataAndres/backend:/app
+    networks:
+      - Network-main
+
+  # ===== nginx service =====
+  proxy-reverse-dell:
+    image: nginx:alpine
+    container_name: proxy-reverse-dell
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NGINX_HOST=ofex.udistrital.edu.com
+      - NGINX_PORT=8080
+    volumes:
+      - ./nginx/config/nginx:/etc/nginx
+      - ./nginx/config/certs_security:/etc/certs_security
+    networks:
+      - Network-main
+    restart: always
+
+networks:
+  auth_network:
+    driver: bridge
+  Network-main:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_node_modules:
+    driver: local
+  frontend_node_modules:
+    driver: local
+  contract_postgres_data:
+    driver: local

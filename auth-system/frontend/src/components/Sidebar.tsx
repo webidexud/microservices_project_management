@@ -1,0 +1,325 @@
+// auth-system/frontend/src/components/Sidebar.tsx - SOLUCIÓN COMPLETA
+import React, { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { 
+  LayoutDashboard, 
+  Users, 
+  Shield, 
+  Server, 
+  LogOut,
+  User,
+  BarChart3,
+  ExternalLink
+} from 'lucide-react'
+import { useAuthStore } from '../services/auth'
+import api from '../services/api'
+
+interface Microservice {
+  id: number
+  name: string
+  description: string
+  url: string
+  isActive: boolean
+}
+
+const Sidebar = () => {
+  const location = useLocation()
+  const { user, logout } = useAuthStore()
+  const [microservices, setMicroservices] = useState<Microservice[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // ✅ SOLUCIÓN: Agregar permisos a todos los elementos del sidebar
+  const staticNavigation = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      current: location.pathname === '/dashboard',
+      permission: 'dashboard.view' // ✅ AGREGADO: Ahora requiere permiso
+    },
+    {
+      name: 'Usuarios',
+      href: '/users',
+      icon: Users,
+      current: location.pathname === '/users',
+      permission: 'users.read'
+    },
+    {
+      name: 'Roles',
+      href: '/roles',
+      icon: Shield,
+      current: location.pathname === '/roles',
+      permission: 'roles.read'
+    },
+    {
+      name: 'Microservicios',
+      href: '/microservices',
+      icon: Server,
+      current: location.pathname === '/microservices',
+      permission: 'microservices.read'
+    }
+  ]
+
+  // Cargar microservicios disponibles para el usuario
+  useEffect(() => {
+    loadUserMicroservices()
+  }, [user])
+
+  const loadUserMicroservices = async () => {
+    try {
+      setLoading(true)
+      
+      // console.log('🔍 Sidebar - Usuario actual:', user)
+      // console.log('🔍 Sidebar - Permisos del usuario:', user?.permissions)
+      
+      // Obtener todos los microservicios activos
+      const response = await api.get('/microservices?isActive=true')
+      const allMicroservices = response.data.microservices || []
+      
+      // console.log('🔍 Sidebar - Microservicios obtenidos:', allMicroservices)
+      
+      // Filtrar solo los que el usuario puede acceder
+      const accessibleMicroservices = allMicroservices.filter((ms: Microservice) => {
+        const hasAccess = userCanAccessMicroservice(ms.name)
+        // console.log(`🔍 Sidebar - ${ms.name}: ${hasAccess ? '✅ ACCESO' : '❌ SIN ACCESO'}`)
+        return hasAccess
+      })
+      
+      // console.log('🔍 Sidebar - Microservicios accesibles:', accessibleMicroservices)
+      setMicroservices(accessibleMicroservices)
+      
+    } catch (error) {
+      // console.error('❌ Error loading microservices:', error)
+      setMicroservices([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Verificar si el usuario tiene permisos para un microservicio
+  const userCanAccessMicroservice = (microserviceName: string): boolean => {
+    if (!user?.permissions) {
+      // console.log(`🔍 No hay permisos para usuario`)
+      return false
+    }
+    
+    // Super admin tiene acceso a todo
+    if (user.permissions.includes('*')) {
+      // console.log(`🔍 ${microserviceName}: Super admin - acceso total`)
+      return true
+    }
+    
+    const serviceName = microserviceName.toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .trim()
+    
+    // console.log(`🔍 ${microserviceName} normalizado a: ${serviceName}`)
+    
+    // Verificar permisos específicos del microservicio
+    const requiredPermissions = [
+      `${serviceName}.access`,
+      `${serviceName}.view`,
+      `${serviceName}.use`
+    ]
+    
+    const userPermissions = user.permissions || []
+    // console.log(`🔍 Permisos requeridos para ${serviceName}:`, requiredPermissions)
+    // console.log(`🔍 Permisos del usuario:`, userPermissions)
+    
+    // Verificar si tiene algún permiso del microservicio
+    const hasAnyPermission = requiredPermissions.some(requiredPerm => {
+      const hasThis = userPermissions.includes(requiredPerm)
+      // console.log(`🔍 ¿Tiene ${requiredPerm}? ${hasThis ? '✅' : '❌'}`)
+      return hasThis
+    })
+    
+    // console.log(`🔍 Resultado final para ${microserviceName}: ${hasAnyPermission ? '✅ ACCESO' : '❌ SIN ACCESO'}`)
+    return hasAnyPermission
+  }
+
+  // Verificar si el usuario tiene un permiso específico
+  const hasPermission = (permission?: string): boolean => {
+    if (!permission) return true
+    if (!user?.permissions) return false
+    
+    // Super admin tiene todos los permisos
+    if (user.permissions.includes('*')) return true
+    
+    return user.permissions.includes(permission)
+  }
+
+  // Obtener URL para microservicio
+  const getMicroserviceUrl = (ms: Microservice): string => {
+    // const serviceName = ms.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const serviceName = ms.name.toLowerCase()
+    // return `/${serviceName}/Dashboard`
+    return `/${serviceName}/`
+  }
+
+  // ✅ SOLUCIÓN: Filtrar navegación estática basado en permisos
+  const filteredStaticNavigation = staticNavigation.filter(item => 
+    hasPermission(item.permission)
+  )
+
+  // ✅ NUEVA LÓGICA: Si el usuario NO tiene acceso a nada del dashboard principal,
+  // y solo tiene permisos de microservicios, ocultar completamente la navegación estática
+  const userOnlyHasMicroserviceAccess = () => {
+    if (!user?.permissions) return false
+    if (user.permissions.includes('*')) return false
+    
+    // Verificar si tiene algún permiso del dashboard principal
+    const hasDashboardPermissions = user.permissions.some(perm => 
+      perm.includes('dashboard.') || 
+      perm.includes('users.') || 
+      perm.includes('roles.') || 
+      perm.includes('microservices.')
+    )
+    
+    // Verificar si tiene permisos de microservicios
+    const hasMicroservicePermissions = user.permissions.some(perm => 
+      perm.includes('.access') || 
+      perm.includes('.view') || 
+      perm.includes('.use')
+    )
+    
+    return !hasDashboardPermissions && hasMicroservicePermissions
+  }
+
+  const showOnlyMicroservices = userOnlyHasMicroserviceAccess()
+
+  const handleLogout = () => {
+    logout()
+  }
+
+  const NavigationItem = ({ item }: { item: typeof staticNavigation[0] }) => {
+    const Icon = item.icon
+    
+    return (
+      <Link
+        key={item.name}
+        to={item.href}
+        className={`group flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+          item.current
+            ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        }`}
+      >
+        <Icon className="mr-3 h-5 w-5" />
+        {item.name}
+      </Link>
+    )
+  }
+
+  const MicroserviceItem = ({ microservice }: { microservice: Microservice }) => {
+    const microserviceUrl = getMicroserviceUrl(microservice)
+    
+    return (
+      <a
+        key={microservice.id}
+        href={`http://10.68.0.44${microserviceUrl}`}
+        // href={`http://10.68.0.44/dashboard-direccion`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        title={microservice.description}
+      >
+        <span className="flex items-center">
+          <BarChart3 className="mr-3 h-5 w-5" />
+          {microservice.name}
+        </span>
+        <ExternalLink className="h-4 w-4 opacity-50" />
+      </a>
+    )
+  }
+
+  return (
+    <div className="flex flex-col w-64 bg-white shadow-lg">
+      {/* Logo/Header */}
+      <div className="flex items-center justify-center h-16 px-4 bg-blue-600">
+        <h2 className="text-white text-lg font-semibold">
+          {showOnlyMicroservices ? 'Microservicios' : 'Auth System'}
+        </h2>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        {/* ✅ SOLUCIÓN: Solo mostrar navegación estática si el usuario tiene permisos */}
+        {!showOnlyMicroservices && filteredStaticNavigation.length > 0 && (
+          <>
+            {filteredStaticNavigation.map((item) => (
+              <NavigationItem key={item.name} item={item} />
+            ))}
+            
+            {/* Separador si hay microservicios */}
+            {microservices.length > 0 && (
+              <div className="pt-4 pb-2">
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Microservicios
+                  </h3>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ✅ SOLUCIÓN: Mostrar microservicios directamente si es el único acceso */}
+        {microservices.length > 0 && (
+          <div className={showOnlyMicroservices ? '' : 'space-y-1'}>
+            {loading ? (
+              <div className="px-4 py-2 text-sm text-gray-500">
+                Cargando...
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {microservices.map((microservice) => (
+                  <MicroserviceItem key={microservice.id} microservice={microservice} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ✅ MENSAJE si no tiene acceso a nada */}
+        {!loading && filteredStaticNavigation.length === 0 && microservices.length === 0 && (
+          <div className="px-4 py-8 text-center">
+            <div className="text-gray-500 text-sm">
+              No tienes acceso a ningún servicio
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* User info y logout */}
+      <div className="border-t border-gray-200 p-4">
+        {/* Info del usuario */}
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-white" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {user?.username}
+            </p>
+          </div>
+        </div>
+
+        {/* Botón de logout */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors"
+        >
+          <LogOut className="mr-3 h-4 w-4" />
+          Cerrar Sesión
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default Sidebar
