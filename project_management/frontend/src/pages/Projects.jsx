@@ -360,7 +360,7 @@ export default function Projects() {
       {selectedProjectForModifications && (
         <ModificationsDialog
           open={showModificationsDialog}
-          onOpenChange={setShowModificationsDialog}
+          onClose={() => setShowModificationsDialog(false)}
           project={selectedProjectForModifications}
         />
       )}

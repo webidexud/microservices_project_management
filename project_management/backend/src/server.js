@@ -4617,3 +4617,278 @@ app.listen(PORT, () => {
     }
   });
 });
+
+
+// ============================================================================
+// VERSIÓN SIMPLIFICADA - SIN contracting_modalities
+// REEMPLAZAR TODO EL CÓDIGO DEL publicApp con este
+// ============================================================================
+
+const publicApp = express();
+const PUBLIC_PORT = 4000;
+
+publicApp.use(cors());
+publicApp.use(express.json());
+
+// ============================================================================
+// ENDPOINT: GET /api/projects
+// ============================================================================
+publicApp.get('/api/projects', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    const query = `
+      SELECT 
+        p.project_id,
+        p.project_year,
+        p.internal_project_number,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as project_code,
+        p.external_project_number,
+        p.project_name,
+        p.project_purpose,
+        p.project_value,
+        p.institutional_benefit_percentage,
+        p.institutional_benefit_value,
+        p.university_contribution,
+        p.entity_contribution,
+        p.subscription_date,
+        p.start_date,
+        p.end_date,
+        p.accounting_code,
+        p.beneficiaries_count,
+        p.main_email,
+        p.administrative_act,
+        p.secop_link,
+        p.observations,
+        p.is_active,
+        p.created_at,
+        e.entity_name,
+        e.tax_id,
+        e.institutional_email as entity_email,
+        e.website as entity_website,
+        e.main_address as entity_address,
+        e.main_phone as entity_phone,
+        et.type_name as entity_type,
+        ed.department_name as executing_department,
+        ed.email as department_email,
+        ed.phone as department_phone,
+        ed.website as department_website,
+        ps.status_name as project_status,
+        ps.status_code,
+        ps.status_color,
+        pt.type_name as project_type,
+        ft.financing_name as financing_type,
+        em.modality_name as execution_modality,
+        em.modality_description as execution_modality_description,
+        CONCAT(oo.first_name, ' ', oo.first_surname) as ordering_official_name,
+        oo.institutional_email as ordering_official_email,
+        oo.phone as ordering_official_phone,
+        oo.identification_number as ordering_official_id
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN entity_types et ON e.entity_type_id = et.entity_type_id
+      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      LEFT JOIN project_types pt ON p.project_type_id = pt.project_type_id
+      LEFT JOIN financing_types ft ON p.financing_type_id = ft.financing_type_id
+      LEFT JOIN execution_modalities em ON p.execution_modality_id = em.execution_modality_id
+      LEFT JOIN ordering_officials oo ON p.ordering_official_id = oo.official_id
+      WHERE p.is_active = true
+      ORDER BY p.project_year DESC, p.internal_project_number DESC
+    `;
+    
+    const result = await client.query(query);
+    client.release();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      total_projects: result.rows.length,
+      data: result.rows
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en API pública:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al consultar la base de datos',
+      details: error.message
+    });
+  }
+});
+
+// GET - Obtener un proyecto específico por ID
+publicApp.get('/api/projects/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await pool.connect();
+    
+    const query = `
+      SELECT 
+        p.project_id,
+        p.project_year,
+        p.internal_project_number,
+        CONCAT(p.project_year, '-', LPAD(p.internal_project_number::text, 3, '0')) as project_code,
+        p.external_project_number,
+        p.project_name,
+        p.project_purpose,
+        p.project_value,
+        p.institutional_benefit_percentage,
+        p.institutional_benefit_value,
+        p.university_contribution,
+        p.entity_contribution,
+        p.subscription_date,
+        p.start_date,
+        p.end_date,
+        p.accounting_code,
+        p.beneficiaries_count,
+        p.main_email,
+        p.administrative_act,
+        p.secop_link,
+        p.observations,
+        p.is_active,
+        p.created_at,
+        e.entity_name,
+        e.tax_id,
+        e.institutional_email as entity_email,
+        e.website as entity_website,
+        e.main_address as entity_address,
+        e.main_phone as entity_phone,
+        et.type_name as entity_type,
+        ed.department_name as executing_department,
+        ed.email as department_email,
+        ed.phone as department_phone,
+        ed.website as department_website,
+        ps.status_name as project_status,
+        ps.status_code,
+        ps.status_color,
+        pt.type_name as project_type,
+        ft.financing_name as financing_type,
+        em.modality_name as execution_modality,
+        em.modality_description as execution_modality_description,
+        CONCAT(oo.first_name, ' ', oo.first_surname) as ordering_official_name,
+        oo.institutional_email as ordering_official_email,
+        oo.phone as ordering_official_phone,
+        oo.identification_number as ordering_official_id
+      FROM projects p
+      LEFT JOIN entities e ON p.entity_id = e.entity_id
+      LEFT JOIN entity_types et ON e.entity_type_id = et.entity_type_id
+      LEFT JOIN executing_departments ed ON p.executing_department_id = ed.department_id
+      LEFT JOIN project_statuses ps ON p.project_status_id = ps.status_id
+      LEFT JOIN project_types pt ON p.project_type_id = pt.project_type_id
+      LEFT JOIN financing_types ft ON p.financing_type_id = ft.financing_type_id
+      LEFT JOIN execution_modalities em ON p.execution_modality_id = em.execution_modality_id
+      LEFT JOIN ordering_officials oo ON p.ordering_official_id = oo.official_id
+      WHERE p.project_id = $1 AND p.is_active = true
+    `;
+    
+    const result = await client.query(query, [id]);
+    client.release();
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Proyecto no encontrado'
+      });
+    }
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      data: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al obtener proyecto:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al consultar la base de datos',
+      details: error.message
+    });
+  }
+});
+
+// Health check
+publicApp.get('/api/health', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW() as timestamp, version()');
+    client.release();
+    
+    res.json({
+      status: 'OK',
+      message: 'API pública funcionando',
+      database: 'Conectado',
+      timestamp: result.rows[0].timestamp
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      error: error.message
+    });
+  }
+});
+
+// Endpoint para ver qué tablas existen (DEBUG)
+publicApp.get('/api/debug/tables', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    const tablesQuery = `
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_type = 'BASE TABLE'
+      ORDER BY table_name
+    `;
+    
+    const result = await client.query(tablesQuery);
+    client.release();
+    
+    res.json({
+      success: true,
+      database: process.env.POSTGRES_DB || 'nuevo_siexud',
+      total_tables: result.rows.length,
+      tables: result.rows.map(r => r.table_name)
+    });
+    
+  } catch (error) {
+    console.error('❌ Error verificando tablas:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Ruta raíz
+publicApp.get('/', (req, res) => {
+  res.json({
+    message: 'API Pública de Proyectos',
+    version: '1.0.0',
+    endpoints: {
+      'GET /api/projects': 'Obtener todos los proyectos con información completa',
+      'GET /api/projects/:id': 'Obtener un proyecto específico por ID',
+      'GET /api/health': 'Verificar estado del API',
+      'GET /api/debug/tables': 'Ver tablas disponibles en la base de datos'
+    },
+    examples: {
+      'Todos los proyectos': 'http://localhost:4000/api/projects',
+      'Proyecto específico': 'http://localhost:4000/api/projects/1',
+      'Health check': 'http://localhost:4000/api/health'
+    }
+  });
+});
+
+
+// Iniciar servidor en puerto 4000
+publicApp.listen(PUBLIC_PORT, () => {
+  console.log('');
+  console.log('🌐 ==========================================');
+  console.log('   API PÚBLICA DE DATOS INICIADA');
+  console.log('==========================================');
+  console.log(`✅ Puerto: ${PUBLIC_PORT}`);
+  console.log(`📡 URL: http://localhost:${PUBLIC_PORT}/api/projects`);
+  console.log('==========================================');
+  console.log('');
+});

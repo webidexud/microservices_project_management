@@ -20,6 +20,9 @@ import {
   officialsApi,
   projectsApi
 } from "@/lib/api"
+import InfoTooltip from "@/components/InfoTooltip"
+import { projectTooltips } from "@/data/tooltipsData"
+
 
 export default function CreateProject() {
   const navigate = useNavigate()
@@ -342,6 +345,11 @@ const confirmarCreacion = async () => {
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Año del Proyecto <span className="text-danger">*</span>
+                        <InfoTooltip 
+                        title={projectTooltips.anio_proyecto.title}
+                        description={projectTooltips.anio_proyecto.description}
+                        example={projectTooltips.anio_proyecto.example}
+                      />
                       </label>
                       <Input
                         type="number"
@@ -357,6 +365,11 @@ const confirmarCreacion = async () => {
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Número Proyecto Externo <span className="text-danger">*</span>
+                        <InfoTooltip 
+                        title={projectTooltips.numero_proyecto_externo.title}
+                        description={projectTooltips.numero_proyecto_externo.description}
+                        example={projectTooltips.numero_proyecto_externo.example}
+                      />
                       </label>
                       <Input
                         name="numero_proyecto_externo"
@@ -372,6 +385,11 @@ const confirmarCreacion = async () => {
                   <div>
                     <label className="text-sm font-medium block mb-2">
                       Nombre del Proyecto <span className="text-danger">*</span>
+                      <InfoTooltip 
+                        title={projectTooltips.nombre_proyecto.title}
+                        description={projectTooltips.nombre_proyecto.description}
+                        example={projectTooltips.nombre_proyecto.example}
+                      />
                     </label>
                     <Input
                       name="nombre_proyecto"
@@ -389,6 +407,11 @@ const confirmarCreacion = async () => {
                   <div>
                     <label className="text-sm font-medium block mb-2">
                       Objeto del Proyecto <span className="text-danger">*</span>
+                      <InfoTooltip 
+                        title={projectTooltips.objeto_proyecto.title}
+                        description={projectTooltips.objeto_proyecto.description}
+                        example={projectTooltips.objeto_proyecto.example}
+                      />
                     </label>
                     <textarea
                       name="objeto_proyecto"
@@ -408,6 +431,11 @@ const confirmarCreacion = async () => {
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Entidad <span className="text-danger">*</span>
+                        <InfoTooltip 
+                          title={projectTooltips.entidad_id.title}
+                          description={projectTooltips.entidad_id.description}
+                          example={projectTooltips.entidad_id.example}
+                        />
                       </label>
                       <SearchableSelect
                         name="entidad_id"
@@ -422,6 +450,11 @@ const confirmarCreacion = async () => {
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Dependencia Ejecutora <span className="text-danger">*</span>
+                        <InfoTooltip 
+                          title={projectTooltips.dependencia_ejecutora_id.title}
+                          description={projectTooltips.dependencia_ejecutora_id.description}
+                          example={projectTooltips.dependencia_ejecutora_id.example}
+                        />
                       </label>
                       <SearchableSelect
                         name="dependencia_ejecutora_id"
@@ -436,6 +469,11 @@ const confirmarCreacion = async () => {
                   <div>
                     <label className="text-sm font-medium block mb-2">
                       Supervisor del Proyecto <span className="text-danger">*</span>
+                      <InfoTooltip 
+                          title={projectTooltips.funcionario_ordenador_id.title}
+                          description={projectTooltips.funcionario_ordenador_id.description}
+                          example={projectTooltips.funcionario_ordenador_id.example}
+                        />
                     </label>
                     <SearchableSelect
                       name="funcionario_ordenador_id"
@@ -450,6 +488,11 @@ const confirmarCreacion = async () => {
                   <div>
                     <label className="text-sm font-medium block mb-2">
                       Acto Administrativo
+                       <InfoTooltip 
+                          title={projectTooltips.acto_administrativo.title}
+                          description={projectTooltips.acto_administrativo.description}
+                          example={projectTooltips.acto_administrativo.example}
+                        />
                     </label>
                     <Input
                       name="acto_administrativo"
@@ -477,6 +520,11 @@ const confirmarCreacion = async () => {
                     <div>
                       <label className="text-sm font-medium block mb-2">
                         Estado del Proyecto <span className="text-danger">*</span>
+                        <InfoTooltip 
+                          title={projectTooltips.estado_proyecto_id .title}
+                          description={projectTooltips.estado_proyecto_id .description}
+                          example={projectTooltips.estado_proyecto_id .example}
+                        />
                       </label>
                       <SearchableSelect
                         name="estado_proyecto_id"

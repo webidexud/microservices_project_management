@@ -281,106 +281,161 @@ export default function ModificationsDialog({ project, open, onClose }) {
 const handleSubmit = (e) => {
   e.preventDefault()
   
-  // Validaciones básicas
+  // Validación básica
   if (!formData.justification.trim()) {
-    alert("La justificación es obligatoria")
+    alert("❌ ERROR: La justificación es obligatoria")
     return
   }
   
-  if (formData.modification_type === "ADDITION" && !formData.addition_value) {
-    alert("El valor de adición es obligatorio")
-    return
-  }
-  
-  if (formData.modification_type === "EXTENSION" && (!formData.extension_days || !formData.new_end_date)) {
-    alert("Los días de extensión y la nueva fecha son obligatorios")
-    return
-  }
-  
-if (formData.modification_type === "SUSPENSION" && (!formData.suspension_start_date || !formData.suspension_reason)) {
-  alert("La fecha de inicio y el motivo de suspensión son obligatorios")
-  return
-}
-
-if (formData.modification_type === "RESTART" && !formData.restart_date) {
-  alert("La fecha de reinicio es obligatoria")
-  return
-}
-if (formData.modification_type === "LIQUIDATION") {
-  if (!formData.liquidation_date || !formData.final_value) {
-    alert("La fecha de liquidación y el valor final son obligatorios")
-    return
-  }
-  if (!formData.liquidation_type) {
-    alert("El tipo de liquidación es obligatorio")
-    return
-  }
-  if (!formData.initial_contract_value) {
-    alert("El valor inicial del contrato es obligatorio")
-    return
-  }
-  if (!formData.execution_percentage) {
-    alert("El porcentaje de ejecución es obligatorio")
-    return
-  }
-  if (!formData.executed_value) {
-    alert("El valor ejecutado es obligatorio")
-    return
-  }
-  if (!formData.liquidation_observations) {
-    alert("Las observaciones del supervisor son obligatorias")
-    return
-  }
-  if (formData.liquidation_type === 'UNILATERAL') {
-    if (!formData.liquidation_act_number) {
-      alert("El número de resolución es obligatorio para liquidación unilateral")
-      return
-    }
-    if (!formData.unilateral_cause) {
-      alert("La causa de liquidación unilateral es obligatoria")
-      return
-    }
-  }
-}
-if (formData.modification_type === "MODIFICATION" && (!formData.clause_number || !formData.clause_name || !formData.new_clause_text)) {
-  alert("El número de cláusula, nombre y nuevo texto son obligatorios")
-  return
-}
-if (formData.modification_type === "ASSIGNMENT") {
-  if (!formData.assignment_type) {
-    alert("El tipo de cesión es obligatorio")
-    return
-  }
-  if (!formData.assignor_name || !formData.assignor_id) {
-    alert("El nombre y la identificación del cedente son obligatorios")
-    return
-  }
-  if (!formData.assignee_name || !formData.assignee_id) {
-    alert("El nombre y la identificación del cesionario son obligatorios")
-    return
-  }
-  if (!formData.assignment_date) {
-    alert("La fecha de cesión es obligatoria")
-    return
-  }
-  if (!formData.value_to_assign) {
-    alert("El valor a ceder es obligatorio")
-    return
-  }
-}
-  
-  // Validaciones específicas para adiciones
-  if (formData.modification_type === "ADDITION" || formData.modification_type === "BOTH") {
-    if (!formData.cdp || !formData.rp) {
-      alert("CDP y RP son obligatorios para adiciones presupuestales")
+  // Validaciones para ADICIÓN
+  if (formData.modification_type === "ADDITION") {
+    // Verificar valor de adición
+    if (!formData.addition_value || formData.addition_value === "0") {
+      alert("❌ ERROR: El Valor de Adición es obligatorio.\n\n📍 Busca el campo 'Valor de Adición' en la sección 'Información de Adición'")
       return
     }
     
-    if (!formData.cdp_value || !formData.rp_value) {
-      alert("Los valores de CDP y RP son obligatorios para adiciones presupuestales")
+    // Verificar CDP
+    if (!formData.cdp || !formData.cdp.trim()) {
+      alert("❌ ERROR: El número de CDP es obligatorio.\n\n📍 Ejemplo: CDP-2024-001\n\n⚠️ Este campo es requerido para adiciones presupuestales")
+      return
+    }
+    
+    // Verificar Valor CDP
+    if (!formData.cdp_value || formData.cdp_value === "0") {
+      alert("❌ ERROR: El Valor del CDP es obligatorio.\n\n⚠️ El valor del CDP debe ser mayor o igual al valor de la adición")
+      return
+    }
+    
+    // Verificar RP
+    if (!formData.rp || !formData.rp.trim()) {
+      alert("❌ ERROR: El número de RP es obligatorio.\n\n📍 Ejemplo: RP-2024-001\n\n⚠️ Este campo es requerido para adiciones presupuestales")
+      return
+    }
+    
+    // Verificar Valor RP
+    if (!formData.rp_value || formData.rp_value === "0") {
+      alert("❌ ERROR: El Valor del RP es obligatorio.\n\n⚠️ El valor del RP debe ser mayor o igual al valor de la adición")
+      return
+    }
+    
+    // Validar que CDP value >= addition value
+    const addValue = cleanNumber(formData.addition_value)
+    const cdpVal = cleanNumber(formData.cdp_value)
+    const rpVal = cleanNumber(formData.rp_value)
+    
+    if (cdpVal < addValue) {
+      alert(`❌ ERROR: El Valor del CDP debe ser mayor o igual al Valor de Adición\n\nValor de Adición: $${formatNumber(formData.addition_value)}\nValor CDP: $${formatNumber(formData.cdp_value)}\n\n⚠️ Corrige el Valor del CDP`)
+      return
+    }
+    
+    if (rpVal < addValue) {
+      alert(`❌ ERROR: El Valor del RP debe ser mayor o igual al Valor de Adición\n\nValor de Adición: $${formatNumber(formData.addition_value)}\nValor RP: $${formatNumber(formData.rp_value)}\n\n⚠️ Corrige el Valor del RP`)
       return
     }
   }
+  
+  // Validaciones para PRÓRROGA
+  if (formData.modification_type === "EXTENSION") {
+    if (!formData.extension_days || !formData.new_end_date) {
+      alert("❌ ERROR: Para una prórroga son obligatorios:\n\n- Días de extensión\n- Nueva fecha de finalización")
+      return
+    }
+  }
+  
+  // Validaciones para AMBAS (Adición Y Prórroga)
+  if (formData.modification_type === "BOTH") {
+    if (!formData.addition_value) {
+      alert("❌ ERROR: El Valor de Adición es obligatorio")
+      return
+    }
+    if (!formData.cdp || !formData.rp) {
+      alert("❌ ERROR: CDP y RP son obligatorios para adiciones presupuestales")
+      return
+    }
+    if (!formData.cdp_value || !formData.rp_value) {
+      alert("❌ ERROR: Los Valores de CDP y RP son obligatorios")
+      return
+    }
+    if (!formData.extension_days || !formData.new_end_date) {
+      alert("❌ ERROR: Los Días de extensión y Nueva fecha son obligatorios")
+      return
+    }
+  }
+  
+  // Validaciones para SUSPENSIÓN
+  if (formData.modification_type === "SUSPENSION") {
+    if (!formData.suspension_start_date || !formData.suspension_reason) {
+      alert("❌ ERROR: Para una suspensión son obligatorios:\n\n- Fecha de inicio\n- Motivo de suspensión")
+      return
+    }
+  }
+
+  // Validaciones para REINICIO
+  if (formData.modification_type === "RESTART") {
+    if (!formData.restart_date) {
+      alert("❌ ERROR: La fecha de reinicio es obligatoria")
+      return
+    }
+  }
+  
+  // Validaciones para LIQUIDACIÓN
+  if (formData.modification_type === "LIQUIDATION") {
+    const requiredFields = []
+    
+    if (!formData.liquidation_date) requiredFields.push("Fecha de liquidación")
+    if (!formData.final_value) requiredFields.push("Valor final")
+    if (!formData.liquidation_type) requiredFields.push("Tipo de liquidación")
+    if (!formData.initial_contract_value) requiredFields.push("Valor inicial del contrato")
+    if (!formData.execution_percentage) requiredFields.push("Porcentaje de ejecución")
+    if (!formData.executed_value) requiredFields.push("Valor ejecutado")
+    if (!formData.liquidation_observations) requiredFields.push("Observaciones del supervisor")
+    
+    if (requiredFields.length > 0) {
+      alert(`❌ ERROR: Faltan los siguientes campos obligatorios:\n\n${requiredFields.map(f => `- ${f}`).join('\n')}`)
+      return
+    }
+    
+    if (formData.liquidation_type === 'UNILATERAL') {
+      if (!formData.liquidation_act_number) {
+        alert("❌ ERROR: El número de resolución es obligatorio para liquidación unilateral")
+        return
+      }
+      if (!formData.unilateral_cause) {
+        alert("❌ ERROR: La causa es obligatoria para liquidación unilateral")
+        return
+      }
+    }
+  }
+  
+  // Validaciones para MODIFICACIÓN DE CLÁUSULAS
+  if (formData.modification_type === "MODIFICATION") {
+    if (!formData.clause_number || !formData.clause_name || !formData.new_clause_text) {
+      alert("❌ ERROR: Para modificación de cláusulas son obligatorios:\n\n- Número de cláusula\n- Nombre de cláusula\n- Nuevo texto")
+      return
+    }
+  }
+  
+  // Validaciones para CESIÓN
+  if (formData.modification_type === "ASSIGNMENT") {
+    const requiredFields = []
+    
+    if (!formData.assignment_type) requiredFields.push("Tipo de cesión")
+    if (!formData.assignor_name) requiredFields.push("Nombre del cedente")
+    if (!formData.assignor_id) requiredFields.push("Identificación del cedente")
+    if (!formData.assignee_name) requiredFields.push("Nombre del cesionario")
+    if (!formData.assignee_id) requiredFields.push("Identificación del cesionario")
+    if (!formData.assignment_date) requiredFields.push("Fecha de cesión")
+    if (!formData.value_to_assign) requiredFields.push("Valor a ceder")
+    
+    if (requiredFields.length > 0) {
+      alert(`❌ ERROR: Faltan los siguientes campos obligatorios:\n\n${requiredFields.map(f => `- ${f}`).join('\n')}`)
+      return
+    }
+  }
+  
+  // Si llegamos aquí, todas las validaciones pasaron
+  console.log("✅ Todas las validaciones pasaron. Enviando datos...")
   
   const datos = {
     modification_type: formData.modification_type,
@@ -466,7 +521,7 @@ pending_obligations_description: formData.pending_obligations_description || nul
     guarantee_modification_request: formData.guarantee_modification_request || null,
     related_derived_project_id: formData.related_derived_project_id ? parseInt(formData.related_derived_project_id) : null,
   }
-
+  console.log("📤 Datos a enviar:", datos)
   createMutation.mutate(datos)
 }
 
@@ -510,7 +565,7 @@ pending_obligations_description: formData.pending_obligations_description || nul
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-     <DialogContent className="max-w-[1400px] !fixed !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 max-h-[90vh] overflow-y-auto">
+     <DialogContent className="max-w-[1400px] !fixed !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 max-h-[90vh] overflow-y-auto"onClose={onClose}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileEdit className="h-5 w-5" />

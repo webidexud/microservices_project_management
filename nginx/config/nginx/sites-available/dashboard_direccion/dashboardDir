@@ -1,0 +1,4 @@
+location / {
+    proxy_pass http://dashboard-direccion:61800/;
+    include /etc/nginx/sites-available/comunconfigurations/proxy-common.conf;
+}

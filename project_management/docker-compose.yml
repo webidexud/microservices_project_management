@@ -6,6 +6,7 @@ services:
     container_name: project_management
     ports:
       - "8000:8000"
+      - "4000:4000"
     env_file:
       - ./backend/.env
     # Si PostgreSQL está en TU MÁQUINA (localhost), usa esto:

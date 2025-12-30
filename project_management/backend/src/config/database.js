@@ -6,7 +6,7 @@ export const pool = new Pool({
   port: process.env.DB_PORT || 5432,
   database: process.env.POSTGRES_DB || 'POSBD',
   user: process.env.POSTGRES_USER || 'admin',
-  password: process.env.POSTGRES_PASSWORD || 'qZVmQxZPE532qu39gGoH7F1DqrbUlW',
+  password: process.env.POSTGRES_PASSWORD,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
